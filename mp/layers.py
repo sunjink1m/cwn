@@ -560,7 +560,8 @@ class LessSparseCINConv(torch.nn.Module):
                  passed_update_down_nn: Optional[Callable],
                  passed_update_boundaries_nn: Optional[Callable],
                  eps: float = 0., train_eps: bool = False, max_dim: int = 2,
-                 graph_norm=BN, use_coboundaries=False, **kwargs):
+                 graph_norm=BN, use_coboundaries=False,
+                 use_boundaries=False, **kwargs):
         super(SparseCINConv, self).__init__()
         self.max_dim = max_dim
         self.mp_levels = torch.nn.ModuleList()
@@ -577,7 +578,7 @@ class LessSparseCINConv(torch.nn.Module):
 
             msg_down_nn = passed_msg_down_nn
             if msg_down_nn is None:
-                if use_coboundaries:
+                if use_boundaries:
                     msg_down_nn = Sequential(
                             Catter(),
                             Linear(kwargs['layer_dim'] * 2, kwargs['layer_dim']),
