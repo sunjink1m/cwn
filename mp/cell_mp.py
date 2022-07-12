@@ -81,12 +81,12 @@ class CochainMessagePassing(torch.nn.Module):
     def __init__(self,
                  up_msg_size,
                  down_msg_size,
+                 boundary_msg_size=None,
                  aggr_up: Optional[str] = "add",
                  aggr_down: Optional[str] = "add",
                  aggr_boundary: Optional[str] = "add",
                  flow: str = "source_to_target",
                  node_dim: int = -2,
-                 boundary_msg_size=None,
                  use_down_msg=True,
                  use_boundary_msg=True):
 
