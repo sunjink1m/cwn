@@ -224,7 +224,8 @@ class Catter(torch.nn.Module):
     
 class SparseCINConv(torch.nn.Module):
     """A cellular version of GIN which performs message passing from  cellular upper
-    neighbors and boundaries, but not from lower neighbors (hence why "Sparse")
+    neighbors and boundaries, but not from cellular lower neighbors nor co-boundaries
+    (hence why "Sparse")
     """
 
     # TODO: Refactor the way we pass networks externally to allow for different networks per dim.
