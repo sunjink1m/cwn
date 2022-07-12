@@ -465,7 +465,10 @@ class OGBEmbedVEWithReduce(AbstractEmbedVEWithReduce):
 
 class LessSparseCINCochainConv(CochainMessagePassing):
     """This is a CIN Cochain layer that operates of boundaries, upper adjacent cells,
-    and lower adjacent cells."""
+    and lower adjacent cells.
+    
+    Based on SparseCINCochainConv
+    """
     def __init__(self, dim: int,
                  up_msg_size: int,
                  down_msg_size: int,
@@ -531,6 +534,8 @@ class LessSparseCINConv(torch.nn.Module):
     """A cellular version of GIN which performs message passing from cellular upper
     neighbors, cellular lower neighbors and boundaries, but not from co-boundaries
     (hence why "LessSparse than SparseCINConv")
+
+    Based on SparseCINConv
     """
 
     # TODO: Refactor the way we pass networks externally to allow for different networks per dim.
