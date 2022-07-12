@@ -555,7 +555,9 @@ class LessSparseCINConv(torch.nn.Module):
     # TODO: Refactor the way we pass networks externally to allow for different networks per dim.
     def __init__(self, up_msg_size: int, down_msg_size: int, boundary_msg_size: Optional[int],
                  passed_msg_up_nn: Optional[Callable], passed_msg_boundaries_nn: Optional[Callable],
+                 passed_msg_down_nn: Optional[Callable],
                  passed_update_up_nn: Optional[Callable],
+                 passed_update_down_nn: Optional[Callable],
                  passed_update_boundaries_nn: Optional[Callable],
                  eps: float = 0., train_eps: bool = False, max_dim: int = 2,
                  graph_norm=BN, use_coboundaries=False, **kwargs):
@@ -573,6 +575,16 @@ class LessSparseCINConv(torch.nn.Module):
                 else:
                     msg_up_nn = lambda xs: xs[0]
 
+            msg_down_nn = passed_msg_down_nn
+            if msg_down_nn is None:
+                if use_coboundaries:
+                    msg_down_nn = Sequential(
+                            Catter(),
+                            Linear(kwargs['layer_dim'] * 2, kwargs['layer_dim']),
+                            kwargs['act_module']())
+                else:
+                    msg_down_nn = lambda xs: xs[0]
+
             msg_boundaries_nn = passed_msg_boundaries_nn
             if msg_boundaries_nn is None:
                 msg_boundaries_nn = lambda x: x
@@ -580,6 +592,17 @@ class LessSparseCINConv(torch.nn.Module):
             update_up_nn = passed_update_up_nn
             if update_up_nn is None:
                 update_up_nn = Sequential(
+                    Linear(kwargs['layer_dim'], kwargs['hidden']),
+                    graph_norm(kwargs['hidden']),
+                    kwargs['act_module'](),
+                    Linear(kwargs['hidden'], kwargs['hidden']),
+                    graph_norm(kwargs['hidden']),
+                    kwargs['act_module']()
+                )
+
+            update_down_nn = passed_update_down_nn
+            if update_down_nn is None:
+                update_down_nn = Sequential(
                     Linear(kwargs['layer_dim'], kwargs['hidden']),
                     graph_norm(kwargs['hidden']),
                     kwargs['act_module'](),
@@ -599,12 +622,13 @@ class LessSparseCINConv(torch.nn.Module):
                     kwargs['act_module']()
                 )
             combine_nn = Sequential(
-                Linear(kwargs['hidden']*2, kwargs['hidden']),
+                Linear(kwargs['hidden']*3, kwargs['hidden']),
                 graph_norm(kwargs['hidden']),
                 kwargs['act_module']())
 
-            mp = SparseCINCochainConv(dim, up_msg_size, down_msg_size, boundary_msg_size=boundary_msg_size,
+            mp = LessSparseCINCochainConv(dim, up_msg_size, down_msg_size, boundary_msg_size=boundary_msg_size,
                 msg_up_nn=msg_up_nn, msg_boundaries_nn=msg_boundaries_nn, update_up_nn=update_up_nn,
+                msg_down_nn=msg_down_nn, update_down_nn=update_down_nn,
                 update_boundaries_nn=update_boundaries_nn, combine_nn=combine_nn, eps=eps,
                 train_eps=train_eps)
             self.mp_levels.append(mp)
