@@ -3,7 +3,7 @@ import torch.nn.functional as F
 
 from torch.nn import Linear, Embedding, Sequential, BatchNorm1d as BN
 from torch_geometric.nn import JumpingKnowledge, GINEConv
-from mp.layers import InitReduceConv, EmbedVEWithReduce, OGBEmbedVEWithReduce, SparseCINConv
+from mp.layers import InitReduceConv, EmbedVEWithReduce, OGBEmbedVEWithReduce, SparseCINConv, LessSparseCINConv
 from ogb.graphproppred.mol_encoder import AtomEncoder, BondEncoder
 from data.complex import ComplexBatch
 from mp.nn import pool_complex, get_pooling_fn, get_nonlinearity, get_graph_norm
@@ -542,12 +542,18 @@ class EmbedGIN(torch.nn.Module):
         return self.__class__.__name__
 
 
-class EmbedSparseCIN(torch.nn.Module):
+class EmbedLessSparseCIN(torch.nn.Module):
     """
     A cellular version of GIN with some tailoring to nimbly work on molecules from the ZINC database.
 
     This model is based on
     https://github.com/rusty1s/pytorch_geometric/blob/master/benchmark/kernel/gin.py
+
+    Code is identical to EmbedSparseCIN except:
+        - The self.convs is made of LessSparseCINConv's instead of EmbedSparseCIN's
+        - There is an additional arguement, 'use_boundaries' which is input to 
+          LessSparseCINConv
+        
     """
 
     def __init__(self, atom_types, bond_types, out_size, num_layers, hidden,
@@ -555,8 +561,9 @@ class EmbedSparseCIN(torch.nn.Module):
                  readout='sum', train_eps=False, final_hidden_multiplier: int = 2,
                  readout_dims=(0, 1, 2), final_readout='sum', apply_dropout_before='lin2',
                  init_reduce='sum', embed_edge=False, embed_dim=None, use_coboundaries=False,
+                 use_boundaries=False,
                  graph_norm='bn'):
-        super(EmbedSparseCIN, self).__init__()
+        super(EmbedLessSparseCIN, self).__init__()
 
         self.max_dim = max_dim
         if readout_dims is not None:
@@ -586,12 +593,14 @@ class EmbedSparseCIN(torch.nn.Module):
         for i in range(num_layers):
             layer_dim = embed_dim if i == 0 else hidden
             self.convs.append(
-                SparseCINConv(up_msg_size=layer_dim, down_msg_size=layer_dim,
+                LessSparseCINConv(up_msg_size=layer_dim, down_msg_size=layer_dim,
                     boundary_msg_size=layer_dim, passed_msg_boundaries_nn=None,
                     passed_msg_up_nn=None, passed_update_up_nn=None,
+                    passed_msg_down_nn=None, passed_update_down_nn=None,
                     passed_update_boundaries_nn=None, train_eps=train_eps, max_dim=self.max_dim,
                     hidden=hidden, act_module=act_module, layer_dim=layer_dim,
-                    graph_norm=self.graph_norm, use_coboundaries=use_coboundaries))
+                    graph_norm=self.graph_norm, use_coboundaries=use_coboundaries,
+                    use_boundaries=use_boundaries))
         self.jump = JumpingKnowledge(jump_mode) if jump_mode is not None else None
         self.lin1s = torch.nn.ModuleList()
         for _ in range(max_dim + 1):
