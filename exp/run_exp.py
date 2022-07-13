@@ -12,7 +12,7 @@ from exp.train_utils import train, eval, Evaluator
 from exp.parser import get_parser, validate_args
 from mp.graph_models import GIN0, GINWithJK
 from mp.models import CIN0, Dummy, SparseCIN, EdgeOrient, EdgeMPNN, MessagePassingAgnostic
-from mp.molec_models import EmbedSparseCIN, OGBEmbedSparseCIN, EmbedSparseCINNoRings, EmbedGIN
+from mp.molec_models import EmbedSparseCIN, OGBEmbedSparseCIN, EmbedSparseCINNoRings, EmbedGIN, EmbedLessSparseCIN
 from mp.ring_exp_models import RingSparseCIN, RingGIN
 
 
@@ -100,8 +100,11 @@ def main(args):
     # Automatic evaluator, takes dataset name as input
     evaluator = Evaluator(args.eval_metric, eps=args.iso_eps)
 
-    # Use coboundaries?
+    # Use coboundary features for up-messages?
     use_coboundaries = args.use_coboundaries.lower() == 'true'
+
+    # Use boundary features for down-messages?
+    use_boundaries = args.use_boundaries.lower() == 'true'
 
     # Readout dimensions
     readout_dims = tuple(sorted(args.readout_dims))
@@ -223,6 +226,25 @@ def main(args):
                                final_readout=args.final_readout,  # final readout
                                apply_dropout_before=args.drop_position,  # where to apply dropout
                                use_coboundaries=use_coboundaries,
+                               embed_edge=args.use_edge_features,
+                               graph_norm=args.graph_norm,  # normalization layer
+                               readout_dims=readout_dims  # readout_dims
+                               ).to(device)
+    elif args.model == 'embed_less_sparse_cin':
+        model = EmbedLessSparseCIN(dataset.num_node_type,  # The number of atomic types
+                               dataset.num_edge_type,  # The number of bond types
+                               dataset.num_classes,  # num_classes
+                               args.num_layers,  # num_layers
+                               args.emb_dim,  # hidden
+                               dropout_rate=args.drop_rate,  # dropout rate
+                               max_dim=dataset.max_dim,  # max_dim
+                               jump_mode=args.jump_mode,  # jump mode
+                               nonlinearity=args.nonlinearity,  # nonlinearity
+                               readout=args.readout,  # readout
+                               final_readout=args.final_readout,  # final readout
+                               apply_dropout_before=args.drop_position,  # where to apply dropout
+                               use_coboundaries=use_coboundaries,
+                               use_boundaries=use_boundaries,
                                embed_edge=args.use_edge_features,
                                graph_norm=args.graph_norm,  # normalization layer
                                readout_dims=readout_dims  # readout_dims

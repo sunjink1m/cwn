@@ -562,7 +562,7 @@ class LessSparseCINConv(torch.nn.Module):
                  eps: float = 0., train_eps: bool = False, max_dim: int = 2,
                  graph_norm=BN, use_coboundaries=False,
                  use_boundaries=False, **kwargs):
-        super(SparseCINConv, self).__init__()
+        super(LessSparseCINConv, self).__init__()
         self.max_dim = max_dim
         self.mp_levels = torch.nn.ModuleList()
         for dim in range(max_dim+1):
