@@ -11,7 +11,7 @@ python -m exp.run_mol_exp \
   --batch_size 128 \
   --drop_rate 0.0 \
   --drop_position lin2 \
-  --emb_dim 128 \
+  --emb_dim 101 \
   --max_dim 2 \
   --final_readout sum \
   --init_method sum \
