@@ -80,7 +80,8 @@ def main(args):
                                max_ring_size=args.max_ring_size,
                                use_edge_features=args.use_edge_features,
                                simple_features=args.simple_features, n_jobs=args.preproc_jobs,
-                               train_orient=args.train_orient, test_orient=args.test_orient)
+                               train_orient=args.train_orient, test_orient=args.test_orient,
+                               include_down_adj=args.include_down_adj)
         if args.tune:
             split_idx = dataset.get_tune_idx_split()
         else:

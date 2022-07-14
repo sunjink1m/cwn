@@ -10,14 +10,16 @@ class ZincDataset(InMemoryComplexDataset):
     """This is ZINC from the Benchmarking GNNs paper. This is a graph regression task."""
 
     def __init__(self, root, max_ring_size, use_edge_features=False, transform=None,
-                 pre_transform=None, pre_filter=None, subset=True, n_jobs=2):
+                 pre_transform=None, pre_filter=None, subset=True, n_jobs=2,
+                 include_down_adj=False):
         self.name = 'ZINC'
         self._max_ring_size = max_ring_size
         self._use_edge_features = use_edge_features
         self._subset = subset
         self._n_jobs = n_jobs
         super(ZincDataset, self).__init__(root, transform, pre_transform, pre_filter,
-                                          max_dim=2, cellular=True, num_classes=1)
+                                          max_dim=2, cellular=True, num_classes=1, 
+                                          include_down_adj=include_down_adj)
 
         self.data, self.slices, idx = self.load_dataset()
         self.train_ids = idx[0]
@@ -105,7 +107,8 @@ class ZincDataset(InMemoryComplexDataset):
         suffix0 = "_full" if self._subset is False else ""
         suffix1 = f"_{self._max_ring_size}rings" if self._cellular else ""
         suffix2 = "-E" if self._use_edge_features else ""
-        return directory + suffix0 + suffix1 + suffix2
+        suffix3 = f"_down_adj" if self.include_down_adj else ""
+        return directory + suffix0 + suffix1 + suffix2 + suffix3
 
 
 def load_zinc_graph_dataset(root, subset=True):

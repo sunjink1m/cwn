@@ -29,6 +29,7 @@ python -m exp.run_mol_exp \
   --use_coboundaries True \
   --use_boundaries True \
   --use_edge_features \
+  --include_down_adj \
   --early_stop \
   --lr_scheduler_patience 20 \
   --dump_curves \

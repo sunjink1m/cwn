@@ -49,6 +49,8 @@ class CochainMessagePassing(torch.nn.Module):
         up_msg_size (int): The dimensionality of the messages coming from the upper adjacent cells.
         down_msg_size (int): The dimensionality of the messages coming from the
             lower adjacent cells.
+        boundary_msg_size (int, optional): The dimensionality of the messages coming from the
+            boundary cells.
         aggr_up (string, optional): The aggregation scheme to use for upper-adjacencies
             (:obj:`"add"`, :obj:`"mean"`, :obj:`"max"` or :obj:`None`).
             (default: :obj:`"add"`)
@@ -61,8 +63,6 @@ class CochainMessagePassing(torch.nn.Module):
             (default: :obj:`"source_to_target"`)
         node_dim (int, optional): The axis along which to propagate.
             (default: :obj:`-2`)
-        boundary_msg_size (int, optional): The dimensionality of the messages coming from the
-            boundary cells.
         use_down_msg (bool): Whether to propagate messages via the lower adjacencies.
         use_boundary_msg (bool): Whether to propagate messages via the boundary adjacencies.
     """

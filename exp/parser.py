@@ -107,6 +107,8 @@ def get_parser():
                         help='Whether to apply torch.abs from the first layer')
     parser.add_argument('--use_edge_features', action='store_true',
                         help="Use edge features for molecular graphs")
+    parser.add_argument('--include_down_adj', action='store_true',
+                        help="For some but not all datasets(e.g. ZINC), we can choose whether to load lower adjacencies or not")
     parser.add_argument('--simple_features', action='store_true',
                         help="Whether to use only a subset of original features, specific to ogb-mol*")
     parser.add_argument('--early_stop', action='store_true', help='Stop when minimum LR is reached.')
