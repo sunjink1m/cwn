@@ -640,7 +640,7 @@ class EmbedLessSparseCIN(torch.nn.Module):
             assert data.cochains[1].x.size(-1) == 1
 
         # Embed and populate higher-levels
-        params = data.get_all_cochain_params(max_dim=self.max_dim, include_down_features=False)
+        params = data.get_all_cochain_params(max_dim=self.max_dim, include_down_features=True)
         xs = list(self.init_conv(*params))
 
         # Apply dropout on the input features like all models do on ZINC.
@@ -650,7 +650,7 @@ class EmbedLessSparseCIN(torch.nn.Module):
         data.set_xs(xs)
 
         for c, conv in enumerate(self.convs):
-            params = data.get_all_cochain_params(max_dim=self.max_dim, include_down_features=False)
+            params = data.get_all_cochain_params(max_dim=self.max_dim, include_down_features=True)
             start_to_process = 0
             xs = conv(*params, start_to_process=start_to_process)
             data.set_xs(xs)

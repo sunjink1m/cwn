@@ -507,6 +507,7 @@ class LessSparseCINCochainConv(CochainMessagePassing):
         out_up, out_down, out_boundaries = self.propagate(cochain.up_index, cochain.down_index,
                                               cochain.boundary_index, x=cochain.x,
                                               up_attr=cochain.kwargs['up_attr'],
+                                              down_attr=cochain.kwargs['down_attr'],
                                               boundary_attr=cochain.kwargs['boundary_attr'])
 
         # As in GIN, we can learn an injective update function for each multi-set
