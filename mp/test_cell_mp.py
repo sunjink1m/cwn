@@ -20,8 +20,8 @@ def test_edge_propagate_in_cmp():
 
     # Extract the message passing object and propagate
     cmp = CochainMessagePassing(up_msg_size=1, down_msg_size=1)
-    up_msg, down_msg, boundary_msg = cmp.propagate(e.up_index, e.down_index,
-                                               e.boundary_index, x=e.x,
+    up_msg, down_msg, boundary_msg, _ = cmp.propagate(e.up_index, e.down_index,
+                                               e.boundary_index, None, x=e.x,
                                                up_attr=e.kwargs['up_attr'],
                                                down_attr=e.kwargs['down_attr'],
                                                boundary_attr=e.kwargs['boundary_attr'])
@@ -46,8 +46,8 @@ def test_propagate_at_vertex_level_in_cmp():
 
     # Extract the message passing object and propagate
     cmp = CochainMessagePassing(up_msg_size=1, down_msg_size=1)
-    up_msg, down_msg, boundary_msg = cmp.propagate(v.up_index, v.down_index,
-                                               v.boundary_index, x=v.x,
+    up_msg, down_msg, boundary_msg, _ = cmp.propagate(v.up_index, v.down_index,
+                                               v.boundary_index, None, x=v.x,
                                                up_attr=v.kwargs['up_attr'],
                                                down_attr=v.kwargs['down_attr'],
                                                boundary_attr=v.kwargs['boundary_attr'])
@@ -72,8 +72,8 @@ def test_propagate_at_two_cell_level_in_cmp_when_there_is_a_single_one():
 
     # Extract the message passing object and propagate
     cmp = CochainMessagePassing(up_msg_size=1, down_msg_size=1)
-    up_msg, down_msg, boundary_msg = cmp.propagate(t.up_index, t.down_index,
-                                               t.boundary_index, x=t.x,
+    up_msg, down_msg, boundary_msg, _ = cmp.propagate(t.up_index, t.down_index,
+                                               t.boundary_index, None, x=t.x,
                                                up_attr=t.kwargs['up_attr'],
                                                down_attr=t.kwargs['down_attr'],
                                                boundary_attr=t.kwargs['boundary_attr'])
@@ -105,7 +105,7 @@ def test_propagate_at_two_cell_level_in_cmp():
 
     # Extract the message passing object and propagate
     cmp = CochainMessagePassing(up_msg_size=1, down_msg_size=1)
-    up_msg, down_msg, _ = cmp.propagate(up_index, down_index, None, x=x, down_attr=down_attr)
+    up_msg, down_msg, _, _ = cmp.propagate(up_index, down_index, None, None, x=x, down_attr=down_attr)
     expected_updated_x = torch.tensor([[17], [32]], dtype=torch.float)
 
     assert torch.equal(up_msg + down_msg, expected_updated_x)
@@ -128,7 +128,8 @@ def test_smp_messaging_with_isolated_nodes():
         assert not torch.equal(out[i], torch.zeros_like(out[i]))
 
     cmp = CochainMessagePassing(up_msg_size=1, down_msg_size=1)
-    up_msg, down_msg, _ = cmp.propagate(up_index=params.up_index, down_index=None, boundary_index=None,
+    up_msg, down_msg, _, _ = cmp.propagate(up_index=params.up_index, down_index=None, boundary_index=None,
+                                        coboundary_index=None,
                                         x=params.x, up_attr=None)
     assert torch.equal(out, up_msg)
     assert torch.equal(down_msg, torch.zeros_like(down_msg))
@@ -150,7 +151,8 @@ def test_cmp_messaging_with_isolated_node_only():
 
     # This confirms behavior is consistent with our framework
     cmp = CochainMessagePassing(up_msg_size=1, down_msg_size=1)
-    up_msg, _, _ = cmp.propagate(up_index=params.up_index, down_index=None, boundary_index=None,
+    up_msg, _, _, _ = cmp.propagate(up_index=params.up_index, down_index=None, boundary_index=None,
+                                        coboundary_index=None,
                                         x=params.x, up_attr=None)
     assert torch.equal(mp_out, up_msg)
 
@@ -171,7 +173,8 @@ def test_cmp_messaging_with_two_isolated_nodes_only():
 
     # This confirms behavior is consistent with our framework
     cmp = CochainMessagePassing(up_msg_size=1, down_msg_size=1)
-    up_msg, _, _ = cmp.propagate(up_index=params.up_index, down_index=None, boundary_index=None,
+    up_msg, _, _, _ = cmp.propagate(up_index=params.up_index, down_index=None, boundary_index=None,
+                                        coboundary_index=None,
                                         x=params.x, up_attr=None)
     assert torch.equal(mp_out, up_msg)
 
@@ -194,8 +197,8 @@ def test_cmp_messaging_with_replicated_adjs():
     # verify up-messaging with multiple shared coboundaries
     e = bridged_complex.get_cochain_params(dim=1)
     cmp = CochainMessagePassing(up_msg_size=1, down_msg_size=1)
-    e_up_msg, e_down_msg, e_boundary_msg = cmp.propagate(e.up_index, e.down_index,
-                                               e.boundary_index, x=e.x,
+    e_up_msg, e_down_msg, e_boundary_msg, _ = cmp.propagate(e.up_index, e.down_index,
+                                               e.boundary_index, None, x=e.x,
                                                up_attr=e.kwargs['up_attr'],
                                                down_attr=e.kwargs['down_attr'],
                                                boundary_attr=e.kwargs['boundary_attr'])
@@ -211,8 +214,8 @@ def test_cmp_messaging_with_replicated_adjs():
     # same but start from graph instead
     e = bridged_complex_from_graph.get_cochain_params(dim=1)
     cmp = CochainMessagePassing(up_msg_size=1, down_msg_size=1)
-    e_up_msg, e_down_msg, e_boundary_msg = cmp.propagate(e.up_index, e.down_index,
-                                               e.boundary_index, x=e.x,
+    e_up_msg, e_down_msg, e_boundary_msg, _ = cmp.propagate(e.up_index, e.down_index,
+                                               e.boundary_index, None, x=e.x,
                                                up_attr=e.kwargs['up_attr'],
                                                down_attr=e.kwargs['down_attr'],
                                                boundary_attr=e.kwargs['boundary_attr'])
@@ -229,8 +232,8 @@ def test_cmp_messaging_with_replicated_adjs():
     # verify down-messaging with multiple shared boundaries
     t = bridged_complex.get_cochain_params(dim=2)
     cmp = CochainMessagePassing(up_msg_size=1, down_msg_size=1)
-    t_up_msg, t_down_msg, t_boundary_msg = cmp.propagate(t.up_index, t.down_index,
-                                               t.boundary_index, x=t.x,
+    t_up_msg, t_down_msg, t_boundary_msg, _ = cmp.propagate(t.up_index, t.down_index,
+                                               t.boundary_index, None, x=t.x,
                                                up_attr=t.kwargs['up_attr'],
                                                down_attr=t.kwargs['down_attr'],
                                                boundary_attr=t.kwargs['boundary_attr'])
@@ -249,8 +252,8 @@ def test_cmp_messaging_with_replicated_adjs():
     # same but start from graph instead
     t = bridged_complex_from_graph.get_cochain_params(dim=2)
     cmp = CochainMessagePassing(up_msg_size=1, down_msg_size=1)
-    t_up_msg, t_down_msg, t_boundary_msg = cmp.propagate(t.up_index, t.down_index,
-                                               t.boundary_index, x=t.x,
+    t_up_msg, t_down_msg, t_boundary_msg, _ = cmp.propagate(t.up_index, t.down_index,
+                                               t.boundary_index, None, x=t.x,
                                                up_attr=t.kwargs['up_attr'],
                                                down_attr=t.kwargs['down_attr'],
                                                boundary_attr=t.kwargs['boundary_attr'])

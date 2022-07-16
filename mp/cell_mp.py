@@ -41,7 +41,7 @@ from mp.cell_mp_inspector import CellularInspector
 class CochainMessagePassing(torch.nn.Module):
     """The base class for building message passing models on cochain complexes.
 
-    # TODO: Add support for co-boundary adjacencies
+    # TODO: Write tests for co-boundary adjacencies!
     The class considers three types of adjacencies:
     boundary, upper and lower adjacencies.
 
@@ -76,19 +76,25 @@ class CochainMessagePassing(torch.nn.Module):
 
         'boundary_index', 'boundary_adj_t', 'boundary_index_i', 'boundary_index_j', 'boundary_size',
         'boundary_size_i', 'boundary_size_j', 'boundary_ptr', 'agg_boundary_index', 'boundary_dim_size',
+
+        'coboundary_index', 'coboundary_adj_t', 'coboundary_index_i', 'coboundary_index_j', 'coboundary_size',
+        'coboundary_size_i', 'coboundary_size_j', 'coboundary_ptr', 'agg_coboundary_index', 'coboundary_dim_size',
     }
 
     def __init__(self,
                  up_msg_size,
                  down_msg_size,
                  boundary_msg_size=None,
+                 coboundary_msg_size=None,
                  aggr_up: Optional[str] = "add",
                  aggr_down: Optional[str] = "add",
                  aggr_boundary: Optional[str] = "add",
+                 aggr_coboundary: Optional[str] = "add",
                  flow: str = "source_to_target",
                  node_dim: int = -2,
                  use_down_msg=True,
-                 use_boundary_msg=True):
+                 use_boundary_msg=True,
+                 use_coboundary_msg=False):
 
         super(CochainMessagePassing, self).__init__()
 
@@ -96,13 +102,19 @@ class CochainMessagePassing(torch.nn.Module):
         self.down_msg_size = down_msg_size
         self.use_boundary_msg = use_boundary_msg
         self.use_down_msg = use_down_msg
+        self.use_coboundary_msg = use_coboundary_msg
         # Use the same out dimension for boundaries as for down adjacency by default
         self.boundary_msg_size = down_msg_size if boundary_msg_size is None else boundary_msg_size
+        # Use the same out dimension for coboundaries as for down adjacency by default
+        self.coboundary_msg_size = down_msg_size if coboundary_msg_size is None else coboundary_msg_size
         self.aggr_up = aggr_up
         self.aggr_down = aggr_down
         self.aggr_boundary = aggr_boundary
+        self.aggr_coboundary = aggr_coboundary
         assert self.aggr_up in ['add', 'mean', 'max', None]
         assert self.aggr_down in ['add', 'mean', 'max', None]
+        assert self.aggr_boundary in ['add', 'mean', 'max', None]
+        assert self.aggr_coboundary in ['add', 'mean', 'max', None]
 
         self.flow = flow
         assert self.flow in ['source_to_target', 'target_to_source']
@@ -118,23 +130,28 @@ class CochainMessagePassing(torch.nn.Module):
         self.inspector.inspect(self.message_up)
         self.inspector.inspect(self.message_down)
         self.inspector.inspect(self.message_boundary)
+        self.inspector.inspect(self.message_coboundary)
         self.inspector.inspect(self.aggregate_up, pop_first_n=1)
         self.inspector.inspect(self.aggregate_down, pop_first_n=1)
         self.inspector.inspect(self.aggregate_boundary, pop_first_n=1)
+        self.inspector.inspect(self.aggregate_coboundary, pop_first_n=1)
         self.inspector.inspect(self.message_and_aggregate_up, pop_first_n=1)
         self.inspector.inspect(self.message_and_aggregate_down, pop_first_n=1)
         self.inspector.inspect(self.message_and_aggregate_boundary, pop_first_n=1)
-        self.inspector.inspect(self.update, pop_first_n=3)
+        self.inspector.inspect(self.message_and_aggregate_coboundary, pop_first_n=1)
+        self.inspector.inspect(self.update, pop_first_n=4)
 
         # Return the parameter name for these functions minus those specified in special_args
         # TODO(Cris): Split user args by type of adjacency to make sure no bugs are introduced.
         self.__user_args__ = self.inspector.keys(
-            ['message_up', 'message_down', 'message_boundary', 'aggregate_up',
-             'aggregate_down', 'aggregate_boundary']).difference(self.special_args)
+            ['message_up', 'message_down', 'message_boundary', 'message_coboundary',
+             'aggregate_up','aggregate_down', 'aggregate_boundary', 
+             'aggregate_coboundary']).difference(self.special_args)
         self.__fused_user_args__ = self.inspector.keys(
             ['message_and_aggregate_up',
              'message_and_aggregate_down',
-             'message_and_aggregate_boundary']).difference(self.special_args)
+             'message_and_aggregate_boundary',
+             'message_and_aggregate_coboundary']).difference(self.special_args)
         self.__update_user_args__ = self.inspector.keys(
             ['update']).difference(self.special_args)
 
@@ -142,6 +159,7 @@ class CochainMessagePassing(torch.nn.Module):
         self.fuse_up = self.inspector.implements('message_and_aggregate_up')
         self.fuse_down = self.inspector.implements('message_and_aggregate_down')
         self.fuse_boundary = self.inspector.implements('message_and_aggregate_boundary')
+        self.fuse_coboundary = self.inspector.implements('message_and_aggregate_coboundary')
 
     def __check_input_together__(self, index_up, index_down, size_up, size_down):
         # If we have both up and down adjacency, then check the sizes agree.
@@ -208,7 +226,7 @@ class CochainMessagePassing(torch.nn.Module):
 
     def __collect__(self, args, index, size, adjacency, kwargs):
         i, j = (1, 0) if self.flow == 'source_to_target' else (0, 1)
-        assert adjacency in ['up', 'down', 'boundary']
+        assert adjacency in ['up', 'down', 'boundary', 'coboundary']
 
         out = {}
         for arg in args:
@@ -233,6 +251,16 @@ class CochainMessagePassing(torch.nn.Module):
                         size_data = kwargs.get(arg[9:-2], Parameter.empty)
                     else:
                         data = kwargs.get(arg[9:-2], Parameter.empty)
+                        size_data = data
+                # TODO: I suspect this elif needs to be modified for co-boundaries to work properly
+                elif adjacency == 'coboundary' and arg.startswith('coboundary_'):
+                    if dim == 0:
+                        # We need to use the coboundary attribute matrix (i.e. coboundary_attr) for the features
+                        # And we need to use the x matrix to extract the number of parent cells
+                        data = kwargs.get('coboundary_attr', Parameter.empty)
+                        size_data = kwargs.get(arg[11:-2], Parameter.empty)
+                    else:
+                        data = kwargs.get(arg[11:-2], Parameter.empty)
                         size_data = data
                 else:
                     continue
@@ -288,6 +316,8 @@ class CochainMessagePassing(torch.nn.Module):
             return self.message_and_aggregate_down
         elif adjacency == 'boundary':
             return self.message_and_aggregate_boundary
+        elif adjacency == 'coboundary':
+            return self.message_and_aggregate_coboundary
         else:
             return None
 
@@ -298,6 +328,8 @@ class CochainMessagePassing(torch.nn.Module):
             return self.message_down
         elif adjacency == 'boundary':
             return self.message_boundary
+        elif adjacency == 'coboundary':
+            return self.message_coboundary
         else:
             return None
 
@@ -308,6 +340,8 @@ class CochainMessagePassing(torch.nn.Module):
             return self.aggregate_down
         elif adjacency == 'boundary':
             return self.aggregate_boundary
+        elif adjacency == 'coboundary':
+            return self.aggregate_coboundary
         else:
             return None
 
@@ -318,6 +352,8 @@ class CochainMessagePassing(torch.nn.Module):
             return self.fuse_down
         elif adjacency == 'boundary':
             return self.fuse_boundary
+        elif adjacency == 'coboundary':
+            return self.fuse_coboundary
         else:
             return None
 
@@ -325,7 +361,7 @@ class CochainMessagePassing(torch.nn.Module):
                                   adjacency: str,
                                   size: List[Optional[int]] = None,
                                   **kwargs):
-        assert adjacency in ['up', 'down', 'boundary']
+        assert adjacency in ['up', 'down', 'boundary', 'coboundary']
 
         # Fused message and aggregation
         fuse = self.get_fuse_boolean(adjacency)
@@ -357,14 +393,17 @@ class CochainMessagePassing(torch.nn.Module):
     def propagate(self, up_index: Optional[Adj],
                   down_index: Optional[Adj],
                   boundary_index: Optional[Adj],  # The None default does not work here!
+                  coboundary_index: Optional[Adj],  # The None default does not work here!
                   up_size: Size = None,
                   down_size: Size = None,
                   boundary_size: Size = None,
+                  coboundary_size: Size = None,
                   **kwargs):
         """The initial call to start propagating messages."""
         up_size = self.__check_input_separately__(up_index, up_size)
         down_size = self.__check_input_separately__(down_index, down_size)
         boundary_size = self.__check_input_separately__(boundary_index, boundary_size)
+        coboundary_size = self.__check_input_separately__(coboundary_index, coboundary_size)
         self.__check_input_together__(up_index, down_index, up_size, down_size)
 
         up_out, down_out = None, None
@@ -381,6 +420,12 @@ class CochainMessagePassing(torch.nn.Module):
         if self.use_boundary_msg and 'boundary_attr' in kwargs and kwargs['boundary_attr'] is not None:
             boundary_out = self.__message_and_aggregate__(boundary_index, 'boundary', boundary_size, **kwargs)
 
+        # coboundary messaging and aggregation
+        # TODO: I suspect the next three lines would need to change for co-boundaries to work properly
+        coboundary_out = None
+        if self.use_coboundary_msg and 'coboundary_attr' in kwargs and kwargs['coboundary_attr'] is not None:
+            coboundary_out = self.__message_and_aggregate__(coboundary_index, 'coboundary', coboundary_size, **kwargs)
+
         coll_dict = {}
         up_coll_dict = self.__collect__(self.__update_user_args__, up_index, up_size, 'up',
                                         kwargs)
@@ -389,7 +434,7 @@ class CochainMessagePassing(torch.nn.Module):
         coll_dict.update(up_coll_dict)
         coll_dict.update(down_coll_dict)
         update_kwargs = self.inspector.distribute('update', coll_dict)
-        return self.update(up_out, down_out, boundary_out, **update_kwargs)
+        return self.update(up_out, down_out, boundary_out, coboundary_out, **update_kwargs)
 
     def message_up(self, up_x_j: Tensor, up_attr: Tensor) -> Tensor:
         r"""Constructs upper messages from cell :math:`j` to cell :math:`i` for each edge in
@@ -419,6 +464,15 @@ class CochainMessagePassing(torch.nn.Module):
         :obj:`_j` to the variable name, *.e.g.* :obj:`x_i` and :obj:`x_j`.
         """
         return boundary_x_j
+
+    def message_coboundary(self, coboundary_x_j: Tensor):
+        r"""Constructs coboundary messages from cell :math:`j` to cell :math:`i` for each edge in
+        :obj:`coboundary_index`. This function can take any argument as input which was initially
+        passed to :meth:`propagate`. Furthermore, tensors passed to :meth:`propagate` can be mapped
+        to the respective cells :math:`i` and :math:`j` by appending :obj:`_i` or
+        :obj:`_j` to the variable name, *.e.g.* :obj:`x_i` and :obj:`x_j`.
+        """
+        return coboundary_x_j
 
     def aggregate_up(self, inputs: Tensor, agg_up_index: Tensor,
                      up_ptr: Optional[Tensor] = None,
@@ -470,13 +524,31 @@ class CochainMessagePassing(torch.nn.Module):
         that support "add", "mean" and "max" operations as specified in
         :meth:`__init__` by the :obj:`aggr` argument.
         """
-        # import pdb; pdb.set_trace()
         if boundary_ptr is not None:
             down_ptr = expand_left(boundary_ptr, dim=self.node_dim, dims=inputs.dim())
             return segment_csr(inputs, down_ptr, reduce=self.aggr_boundary)
         else:
             return scatter(inputs, agg_boundary_index, dim=self.node_dim, dim_size=boundary_dim_size,
                            reduce=self.aggr_boundary)
+
+    def aggregate_coboundary(self, inputs: Tensor, agg_coboundary_index: Tensor,
+                       coboundary_ptr: Optional[Tensor] = None,
+                       coboundary_dim_size: Optional[int] = None) -> Tensor:
+        r"""Aggregates messages from the coboundary cells.
+
+        Takes in the output of message computation as first argument and any
+        argument which was initially passed to :meth:`propagate`.
+
+        By default, this function will delegate its call to scatter functions
+        that support "add", "mean" and "max" operations as specified in
+        :meth:`__init__` by the :obj:`aggr` argument.
+        """
+        if coboundary_ptr is not None:
+            down_ptr = expand_left(coboundary_ptr, dim=self.node_dim, dims=inputs.dim())
+            return segment_csr(inputs, down_ptr, reduce=self.aggr_coboundary)
+        else:
+            return scatter(inputs, agg_coboundary_index, dim=self.node_dim, dim_size=coboundary_dim_size,
+                           reduce=self.aggr_coboundary)
 
     def message_and_aggregate_up(self, up_adj_t: SparseTensor) -> Tensor:
         r"""Fuses computations of :func:`message_up` and :func:`aggregate_up` into a
@@ -508,8 +580,19 @@ class CochainMessagePassing(torch.nn.Module):
         """
         raise NotImplementedError
 
+    def message_and_aggregate_coboundary(self, coboundary_adj_t: SparseTensor) -> Tensor:
+        r"""Fuses computations of :func:`message_coboundary` and :func:`aggregate_coboundary` into a
+        single function.
+        If applicable, this saves both time and memory since messages do not
+        explicitly need to be materialized.
+        This function will only gets called in case it is implemented and
+        propagation takes place based on a :obj:`torch_sparse.SparseTensor`.
+        """
+        raise NotImplementedError
+
     def update(self, up_inputs: Optional[Tensor], down_inputs: Optional[Tensor],
-               boundary_inputs: Optional[Tensor], x: Tensor) -> (Tensor, Tensor, Tensor):
+               boundary_inputs: Optional[Tensor], coboundary_inputs: Optional[Tensor],
+               x: Tensor) -> (Tensor, Tensor, Tensor, Tensor):
         r"""Updates cell embeddings. Takes in the output of the aggregations from different
         adjacencies as the first three arguments and any argument which was initially passed to
         :meth:`propagate`.
@@ -520,8 +603,10 @@ class CochainMessagePassing(torch.nn.Module):
             down_inputs = torch.zeros(x.size(0), self.down_msg_size).to(device=x.device)
         if boundary_inputs is None:
             boundary_inputs = torch.zeros(x.size(0), self.boundary_msg_size).to(device=x.device)
+        if coboundary_inputs is None:
+            coboundary_inputs = torch.zeros(x.size(0), self.coboundary_msg_size).to(device=x.device)
 
-        return up_inputs, down_inputs, boundary_inputs
+        return up_inputs, down_inputs, boundary_inputs, coboundary_inputs
 
 
 class CochainMessagePassingParams:

@@ -70,9 +70,9 @@ def test_edge_orient_conv_is_orientation_equivariant():
     layer = OrientedConv(dim=1, up_msg_size=1, down_msg_size=1, update_up_nn=None,
         update_down_nn=None, update_nn=None, act_fn=None)
 
-    out_up1, out_down1, _ = layer.propagate(cochain1.upper_index, cochain1.lower_index, None, x=cochain1.x,
+    out_up1, out_down1, _, _ = layer.propagate(cochain1.upper_index, cochain1.lower_index, None, None, x=cochain1.x,
             up_attr=cochain1.upper_orient.view(-1, 1), down_attr=cochain1.lower_orient.view(-1, 1))
-    out_up2, out_down2, _ = layer.propagate(cochain2.upper_index, cochain2.lower_index, None, x=cochain2.x,
+    out_up2, out_down2, _, _ = layer.propagate(cochain2.upper_index, cochain2.lower_index, None, None, x=cochain2.x,
             up_attr=cochain2.upper_orient.view(-1, 1), down_attr=cochain2.lower_orient.view(-1, 1))
 
     assert torch.equal(T2 @ out_up1, out_up2)

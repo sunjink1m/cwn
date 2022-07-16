@@ -31,8 +31,8 @@ class DummyCochainMessagePassing(CochainMessagePassing):
         return down_x_j + down_attr
 
     def forward(self, cochain: CochainMessagePassingParams):
-        up_out, down_out, boundary_out = self.propagate(cochain.up_index, cochain.down_index,
-                                                    cochain.boundary_index, x=cochain.x,
+        up_out, down_out, boundary_out, _ = self.propagate(cochain.up_index, cochain.down_index,
+                                                    cochain.boundary_index, None, x=cochain.x,
                                                     up_attr=cochain.kwargs['up_attr'],
                                                     down_attr=cochain.kwargs['down_attr'],
                                                     boundary_attr=cochain.kwargs['boundary_attr'])
@@ -76,8 +76,8 @@ class CINCochainConv(CochainMessagePassing):
         self.reset_parameters()
 
     def forward(self, cochain: CochainMessagePassingParams):
-        out_up, out_down, _ = self.propagate(cochain.up_index, cochain.down_index,
-                                             None, x=cochain.x,
+        out_up, out_down, _, _ = self.propagate(cochain.up_index, cochain.down_index,
+                                             None, None, x=cochain.x,
                                              up_attr=cochain.kwargs['up_attr'],
                                              down_attr=cochain.kwargs['down_attr'])
 
@@ -182,8 +182,8 @@ class SparseCINCochainConv(CochainMessagePassing):
         self.reset_parameters()
 
     def forward(self, cochain: CochainMessagePassingParams):
-        out_up, _, out_boundaries = self.propagate(cochain.up_index, cochain.down_index,
-                                              cochain.boundary_index, x=cochain.x,
+        out_up, _, out_boundaries, _ = self.propagate(cochain.up_index, cochain.down_index,
+                                              cochain.boundary_index, None, x=cochain.x,
                                               up_attr=cochain.kwargs['up_attr'],
                                               boundary_attr=cochain.kwargs['boundary_attr'])
 
@@ -315,7 +315,7 @@ class OrientedConv(CochainMessagePassing):
         assert cochain.upper_index.max() < len(cochain.x)
         assert cochain.lower_index.max() < len(cochain.x)
 
-        out_up, out_down, _ = self.propagate(cochain.upper_index, cochain.lower_index, None, x=cochain.x,
+        out_up, out_down, _, _ = self.propagate(cochain.upper_index, cochain.lower_index, None, None, x=cochain.x,
             up_attr=cochain.upper_orient.view(-1, 1), down_attr=cochain.lower_orient.view(-1, 1))
 
         out_up = self.update_up_nn(out_up)
@@ -504,8 +504,8 @@ class LessSparseCINCochainConv(CochainMessagePassing):
         self.reset_parameters()
 
     def forward(self, cochain: CochainMessagePassingParams):
-        out_up, out_down, out_boundaries = self.propagate(cochain.up_index, cochain.down_index,
-                                              cochain.boundary_index, x=cochain.x,
+        out_up, out_down, out_boundaries, _ = self.propagate(cochain.up_index, cochain.down_index,
+                                              cochain.boundary_index, None, x=cochain.x,
                                               up_attr=cochain.kwargs['up_attr'],
                                               down_attr=cochain.kwargs['down_attr'],
                                               boundary_attr=cochain.kwargs['boundary_attr'])
