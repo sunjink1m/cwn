@@ -4,7 +4,7 @@ import pytest
 
 from data.complex import ComplexBatch
 from data.dummy_complexes import get_testing_complex_list
-from mp.molec_models import EmbedSparseCIN, OGBEmbedSparseCIN, EmbedSparseCINNoRings, EmbedGIN
+from mp.molec_models import EmbedSparseCIN, EmbedLessSparseCIN, OGBEmbedSparseCIN, EmbedSparseCINNoRings, EmbedGIN
 from data.data_loading import DataLoader, load_dataset
 
 
@@ -284,7 +284,7 @@ def test_ogb_sparse_cin0_model_with_batching():
                     print(key, torch.max(torch.abs(unbatched_res[key] - batched_res[key]))))
 
 
-def test_zinc_sparse_cin0_model_with_batching():
+def test_zinc_less_sparse_cin0_model_with_batching():
     """Check this runs without errors and that batching and no batching produce the same output."""
     data_list = get_testing_complex_list()
 
@@ -298,7 +298,7 @@ def test_zinc_sparse_cin0_model_with_batching():
             continue
 
         data_loader = DataLoader(data_list, batch_size=batch_size, max_dim=batch_max_dim)
-        model = EmbedSparseCIN(atom_types=32, bond_types=4, out_size=3, num_layers=3, hidden=5,
+        model = EmbedLessSparseCIN(atom_types=32, bond_types=4, out_size=3, num_layers=3, hidden=5,
                                jump_mode='cat', max_dim=model_max_dim)
         # We use the model in eval mode to avoid problems with batch norm.
         model.eval()
@@ -345,7 +345,7 @@ def test_zinc_sparse_cin0_model_with_batching():
 
 
 @pytest.mark.data
-def test_zinc_sparse_cin0_model_with_batching_on_proteins():
+def test_zinc_less_sparse_cin0_model_with_batching_on_proteins():
     """Check this runs without errors and that batching and no batching produce the same output."""
     dataset = load_dataset('PROTEINS', max_dim=2, fold=0, init_method='mean')
     assert len(dataset) == 1113
@@ -356,7 +356,7 @@ def test_zinc_sparse_cin0_model_with_batching_on_proteins():
     max_dim = 2
     torch.manual_seed(0)
     data_loader = DataLoader(dataset, batch_size=32, max_dim=max_dim)
-    model = EmbedSparseCIN(atom_types=64, bond_types=4, out_size=3, num_layers=3, hidden=5,
+    model = EmbedLessSparseCIN(atom_types=64, bond_types=4, out_size=3, num_layers=3, hidden=5,
                            jump_mode='cat', max_dim=max_dim)
     model.eval()
 
