@@ -615,6 +615,7 @@ class CochainMessagePassingParams:
     This object stores the equivalent of the `x` and `edge_index` objects from PyTorch Geometric.
     TODO: The boundary_index and boundary_attr as well as other essential parameters are
           currently passed as keyword arguments. Special parameters should be created.
+          Also, same for coboundary_index and coboundary_attr
     Args:
         x: The features of the cochain where message passing will be performed.
         up_index: The index for the upper adjacencies of the cochain.
@@ -633,3 +634,11 @@ class CochainMessagePassingParams:
             self.boundary_attr = self.kwargs['boundary_attr']
         else:
             self.boundary_attr = None
+        if 'coboundary_index' in self.kwargs:
+            self.coboundary_index = self.kwargs['coboundary_index']
+        else:
+            self.coboundary_index = None
+        if 'coboundary_attr' in self.kwargs:
+            self.coboundary_attr = self.kwargs['coboundary_attr']
+        else:
+            self.coboundary_attr = None
