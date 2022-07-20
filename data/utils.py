@@ -176,7 +176,7 @@ def extract_labels(y, size):
 
 def generate_cochain(dim, x, all_upper_index, all_lower_index,
                    all_shared_boundaries, all_shared_coboundaries, cell_tables, boundaries_tables,
-                   complex_dim, y=None):
+                   complex_dim, y=None, include_coboundary_links=False, co_boundaries=None, id_maps=None):
     """Builds a Cochain given all the adjacency data extracted from the complex."""
     if dim == 0:
         assert len(all_lower_index[dim]) == 0
@@ -202,7 +202,19 @@ def generate_cochain(dim, x, all_upper_index, all_lower_index,
                 boundary_index[1].append(s)
                 boundary_index[0].append(boundary)
         boundary_index = torch.LongTensor(boundary_index)
-        
+
+    coboundary_index = None
+    if include_coboundary_links:
+        assert id_maps is not None
+        if len(co_boundaries[dim]) > 0:
+            coboundary_index = [list(), list()]
+            cell_to_cobounds_dict = co_boundaries[dim]
+            for cell, cobounds in cell_to_cobounds_dict.items():
+                for cobound in cobounds:
+                    coboundary_index[1].append(id_maps[dim+1][cobound])
+                    coboundary_index[0].append(id_maps[dim][cell])
+            coboundary_index = torch.LongTensor(coboundary_index)
+
     if num_cells_down is None:
         assert shared_boundaries is None
     if num_cells_up == 0:
@@ -214,11 +226,12 @@ def generate_cochain(dim, x, all_upper_index, all_lower_index,
     if down_index is not None:
         assert down_index.size(1) == shared_boundaries.size(0)
         assert num_cells_down >= shared_boundaries.max() + 1
-
+    
     return Cochain(dim=dim, x=x, upper_index=up_index,
                  lower_index=down_index, shared_coboundaries=shared_coboundaries,
                  shared_boundaries=shared_boundaries, y=y, num_cells_down=num_cells_down,
-                 num_cells_up=num_cells_up, boundary_index=boundary_index)
+                 num_cells_up=num_cells_up, boundary_index=boundary_index,
+                 coboundary_index=coboundary_index)
 
 
 def compute_clique_complex_with_gudhi(x: Tensor, edge_index: Adj, size: int,
@@ -368,7 +381,13 @@ def get_ring_boundaries(ring):
 
 
 def extract_boundaries_and_coboundaries_with_rings(simplex_tree, id_maps):
-    """Build two maps: cell -> its coboundaries and cell -> its boundaries"""
+    """
+    Build two maps: cell -> its coboundaries and cell -> its boundaries
+    
+    The outputs we just obtain from extract_boundaries_and_coboundaries_from_simplex_tree
+    doesn't contain information regarding 2-cells (e.g. boundary info from 2 to 1 cells 
+    and coboundary information from 1 to 2 cells). So we add them manually in this function below
+    """
 
     # Find boundaries and coboundaries up to edges by conveniently
     # invoking the code for simplicial complexes
@@ -393,7 +412,7 @@ def extract_boundaries_and_coboundaries_with_rings(simplex_tree, id_maps):
                     coboundaries[1][boundary] = list()
                 coboundaries[1][boundary].append(cell)
                 boundaries_tables[2][-1].append(id_maps[1][boundary])
-    
+
     return boundaries_tables, boundaries, coboundaries
 
 
@@ -401,6 +420,7 @@ def compute_ring_2complex(x: Union[Tensor, np.ndarray], edge_index: Union[Tensor
                           edge_attr: Optional[Union[Tensor, np.ndarray]],
                           size: int, y: Optional[Union[Tensor, np.ndarray]] = None, max_k: int = 7,
                           include_down_adj=True, init_method: str = 'sum',
+                          include_coboundary_links=False,
                           init_edges=True, init_rings=False) -> Complex:
     """Generates a ring 2-complex of a pyG graph via graph-tool.
 
@@ -412,6 +432,7 @@ def compute_ring_2complex(x: Union[Tensor, np.ndarray], edge_index: Union[Tensor
         y: Labels for the graph nodes or a label for the whole graph.
         max_k: maximum length of rings to look for.
         include_down_adj: Whether to add down adj in the complex or not
+        include_coboundary_links: Whether to add links to the coboundaries in the complex or not
         init_method: How to initialise features at higher levels.
     """
     assert x is not None
@@ -492,13 +513,16 @@ def compute_ring_2complex(x: Union[Tensor, np.ndarray], edge_index: Union[Tensor
     for i in range(complex_dim + 1):
         y = v_y if i == 0 else None
         cochain = generate_cochain(i, xs[i], upper_idx, lower_idx, shared_boundaries, shared_coboundaries,
-                               cell_tables, boundaries_tables, complex_dim=complex_dim, y=y)
+                               cell_tables, boundaries_tables, complex_dim=complex_dim, y=y,
+                               include_coboundary_links=include_coboundary_links,
+                               co_boundaries=co_boundaries, id_maps=id_maps)
         cochains.append(cochain)
 
     return Complex(*cochains, y=complex_y, dimension=complex_dim)
 
 
 def convert_graph_dataset_with_rings(dataset, max_ring_size=7, include_down_adj=False,
+                                     include_coboundary_links=False,
                                      init_method: str = 'sum', init_edges=True, init_rings=False,
                                      n_jobs=1):
     dimension = -1
@@ -517,6 +541,7 @@ def convert_graph_dataset_with_rings(dataset, max_ring_size=7, include_down_adj=
         maybe_convert_to_numpy(data.edge_attr),
         data.num_nodes, y=maybe_convert_to_numpy(data.y), max_k=max_ring_size,
         include_down_adj=include_down_adj, init_method=init_method,
+        include_coboundary_links=include_coboundary_links,
         init_edges=init_edges, init_rings=init_rings) for data in dataset)
 
     # NB: here we perform additional checks to verify the order of complexes
