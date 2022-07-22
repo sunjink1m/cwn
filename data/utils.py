@@ -211,8 +211,8 @@ def generate_cochain(dim, x, all_upper_index, all_lower_index,
             cell_to_cobounds_dict = co_boundaries[dim]
             for cell, cobounds in cell_to_cobounds_dict.items():
                 for cobound in cobounds:
-                    coboundary_index[1].append(id_maps[dim+1][cobound])
-                    coboundary_index[0].append(id_maps[dim][cell])
+                    coboundary_index[0].append(id_maps[dim+1][cobound])
+                    coboundary_index[1].append(id_maps[dim][cell])
             coboundary_index = torch.LongTensor(coboundary_index)
 
     if num_cells_down is None:
