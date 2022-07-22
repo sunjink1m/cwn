@@ -160,11 +160,13 @@ def load_dataset(name, root=os.path.join(ROOT_DIR, 'datasets'), max_dim=2, fold=
     elif name == 'ZINC':
         dataset = ZincDataset(os.path.join(root, name), max_ring_size=kwargs['max_ring_size'],
                               use_edge_features=kwargs['use_edge_features'], n_jobs=n_jobs,
-                              include_down_adj=kwargs['include_down_adj'])
+                              include_down_adj=kwargs['include_down_adj'], 
+                              include_coboundary_links=kwargs['include_coboundary_links'])
     elif name == 'ZINC-FULL':
         dataset = ZincDataset(os.path.join(root, name), subset=False, max_ring_size=kwargs['max_ring_size'],
                               use_edge_features=kwargs['use_edge_features'], n_jobs=n_jobs,
-                              include_down_adj=kwargs['include_down_adj'])
+                              include_down_adj=kwargs['include_down_adj'], 
+                              include_coboundary_links=kwargs['include_coboundary_links'])
     elif name == 'CSL':
         dataset = CSLDataset(os.path.join(root, name), max_ring_size=kwargs['max_ring_size'],
                              fold=fold, n_jobs=n_jobs)

@@ -12,7 +12,8 @@ from torch_geometric.datasets import ZINC
 @pytest.mark.slow
 def test_zinc_splits_are_retained():
     dataset1 = load_dataset("ZINC", max_ring_size=7, use_edge_features=True, 
-                            include_down_adj=False)
+                            include_down_adj=False, 
+                            include_coboundary_links=False)
     dataset1_train = dataset1.get_split('train')
     dataset1_valid = dataset1.get_split('valid')
     dataset1_test = dataset1.get_split('test')
@@ -42,7 +43,8 @@ def test_zinc_splits_are_retained():
 def test_we_find_only_the_induced_cycles_on_zinc():
     max_ring = 7
     dataset = load_dataset("ZINC", max_ring_size=max_ring, use_edge_features=True, 
-                            include_down_adj=False)
+                            include_down_adj=False, 
+                            include_coboundary_links=False)
     # Check only on validation to save time. I've also run once on the whole dataset and passes.
     dataset = dataset.get_split('valid')
 

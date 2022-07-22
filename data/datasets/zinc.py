@@ -11,8 +11,9 @@ class ZincDataset(InMemoryComplexDataset):
 
     def __init__(self, root, max_ring_size, use_edge_features=False, transform=None,
                  pre_transform=None, pre_filter=None, subset=True, n_jobs=2,
-                 include_down_adj=False):
+                 include_down_adj=False, include_coboundary_links=False):
         self.name = 'ZINC'
+        self.include_coboundary_links = include_coboundary_links
         self._max_ring_size = max_ring_size
         self._use_edge_features = use_edge_features
         self._subset = subset
@@ -64,6 +65,7 @@ class ZincDataset(InMemoryComplexDataset):
             train_data,
             max_ring_size=self._max_ring_size,
             include_down_adj=self.include_down_adj,
+            include_coboundary_links=self.include_coboundary_links,
             init_edges=self._use_edge_features,
             init_rings=False,
             n_jobs=self._n_jobs)
@@ -75,6 +77,7 @@ class ZincDataset(InMemoryComplexDataset):
             val_data,
             max_ring_size=self._max_ring_size,
             include_down_adj=self.include_down_adj,
+            include_coboundary_links=self.include_coboundary_links,
             init_edges=self._use_edge_features,
             init_rings=False,
             n_jobs=self._n_jobs)
@@ -86,6 +89,7 @@ class ZincDataset(InMemoryComplexDataset):
             test_data,
             max_ring_size=self._max_ring_size,
             include_down_adj=self.include_down_adj,
+            include_coboundary_links=self.include_coboundary_links,
             init_edges=self._use_edge_features,
             init_rings=False,
             n_jobs=self._n_jobs)
@@ -108,7 +112,8 @@ class ZincDataset(InMemoryComplexDataset):
         suffix1 = f"_{self._max_ring_size}rings" if self._cellular else ""
         suffix2 = "-E" if self._use_edge_features else ""
         suffix3 = f"_down_adj" if self.include_down_adj else ""
-        return directory + suffix0 + suffix1 + suffix2 + suffix3
+        suffix4 = f"_CBL" if self.include_coboundary_links else ""
+        return directory + suffix0 + suffix1 + suffix2 + suffix3 + suffix4
 
 
 def load_zinc_graph_dataset(root, subset=True):
