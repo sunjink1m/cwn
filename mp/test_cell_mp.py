@@ -7,24 +7,28 @@ from mp.cell_mp import CochainMessagePassing
 from torch_geometric.nn.conv import MessagePassing
 from data.dummy_complexes import (get_square_dot_complex, get_house_complex,
                                   get_colon_complex, get_fullstop_complex, 
-                                  get_bridged_complex, convert_to_graph)
+                                  get_bridged_complex, convert_to_graph, 
+                                  get_molecular_complex)
 from data.utils import compute_ring_2complex
 
-def test_edge_propagate_in_cmp():
+@pytest.mark.parametrize("include_coboundary_links", [True, False])
+def test_edge_propagate_in_cmp(include_coboundary_links):
     """We build a graph in the shape of a house (a triangle on top of a square)
     and test propagation at the edge level."""
 
-    house_complex = get_house_complex()
+    house_complex = get_house_complex(include_coboundary_links)
     e = house_complex.get_cochain_params(dim=1)
     assert e.kwargs['boundary_index'] is not None, e.kwargs['boundary_index']
 
     # Extract the message passing object and propagate
-    cmp = CochainMessagePassing(up_msg_size=1, down_msg_size=1)
-    up_msg, down_msg, boundary_msg, _ = cmp.propagate(e.up_index, e.down_index,
-                                               e.boundary_index, None, x=e.x,
+    cmp = CochainMessagePassing(up_msg_size=1, down_msg_size=1,
+                 use_coboundary_msg=include_coboundary_links)
+    up_msg, down_msg, boundary_msg, coboundary_msg = cmp.propagate(e.up_index, e.down_index,
+                                               e.boundary_index, e.coboundary_index, x=e.x,
                                                up_attr=e.kwargs['up_attr'],
                                                down_attr=e.kwargs['down_attr'],
-                                               boundary_attr=e.kwargs['boundary_attr'])
+                                               boundary_attr=e.kwargs['boundary_attr'],
+                                               coboundary_attr=e.kwargs['coboundary_attr'])
     expected_down_msg = torch.tensor([[6], [10], [17], [9], [13], [10]], dtype=torch.float)
     assert torch.equal(down_msg, expected_down_msg)
 
@@ -34,23 +38,32 @@ def test_edge_propagate_in_cmp():
     expected_boundary_msg = torch.tensor([[3], [5], [7], [5], [9], [8]], dtype=torch.float)
     assert torch.equal(boundary_msg, expected_boundary_msg)
 
+    if include_coboundary_links:
+        expected_coboundary_msg = torch.tensor([[0], [0], [1], [0], [1], [1]], dtype=torch.float)
+    else:
+        expected_coboundary_msg = torch.tensor([[0], [0], [0], [0], [0], [0]], dtype=torch.float)
+    assert torch.equal(coboundary_msg, expected_coboundary_msg)
+        
 
-def test_propagate_at_vertex_level_in_cmp():
+@pytest.mark.parametrize("include_coboundary_links", [True, False])
+def test_propagate_at_vertex_level_in_cmp(include_coboundary_links):
     """We build a graph in the shape of a house (a triangle on top of a square)
     and test propagation at the vertex level. This makes sure propagate works when
     down_index is None.
     """
 
-    house_complex = get_house_complex()
+    house_complex = get_house_complex(include_coboundary_links)
     v = house_complex.get_cochain_params(dim=0)
-
+    ###################### FIX: v.coboundary_attr is None here... It shouldn't be
     # Extract the message passing object and propagate
-    cmp = CochainMessagePassing(up_msg_size=1, down_msg_size=1)
-    up_msg, down_msg, boundary_msg, _ = cmp.propagate(v.up_index, v.down_index,
-                                               v.boundary_index, None, x=v.x,
+    cmp = CochainMessagePassing(up_msg_size=1, down_msg_size=1,
+                 use_coboundary_msg=include_coboundary_links)
+    up_msg, down_msg, boundary_msg, coboundary_msg = cmp.propagate(v.up_index, v.down_index,
+                                               v.boundary_index, v.coboundary_index, x=v.x,
                                                up_attr=v.kwargs['up_attr'],
                                                down_attr=v.kwargs['down_attr'],
-                                               boundary_attr=v.kwargs['boundary_attr'])
+                                               boundary_attr=v.kwargs['boundary_attr'],
+                                               coboundary_attr=v.kwargs['coboundary_attr'])
 
     expected_up_msg = torch.tensor([[6], [4], [11], [9], [7]], dtype=torch.float)
     assert torch.equal(up_msg, expected_up_msg)
@@ -61,22 +74,31 @@ def test_propagate_at_vertex_level_in_cmp():
     expected_boundary_msg = torch.zeros(5, 1)
     assert torch.equal(boundary_msg, expected_boundary_msg)
 
+    if include_coboundary_links:
+        expected_coboundary_msg = torch.tensor([[5], [3], [11], [12], [11]], dtype=torch.float)
+    else:
+        expected_coboundary_msg = torch.tensor([[0], [0], [0], [0], [0]], dtype=torch.float)
+    assert torch.equal(coboundary_msg, expected_coboundary_msg)
 
-def test_propagate_at_two_cell_level_in_cmp_when_there_is_a_single_one():
+
+@pytest.mark.parametrize("include_coboundary_links", [True, False])
+def test_propagate_at_two_cell_level_in_cmp_when_there_is_a_single_one(include_coboundary_links):
     """We build a graph in the shape of a house (a triangle on top of a square)
     and test propagation at the two_cell level. This makes sure that propagate works when
     up_index is None."""
 
-    house_complex = get_house_complex()
+    house_complex = get_house_complex(include_coboundary_links)
     t = house_complex.get_cochain_params(dim=2)
 
     # Extract the message passing object and propagate
-    cmp = CochainMessagePassing(up_msg_size=1, down_msg_size=1)
-    up_msg, down_msg, boundary_msg, _ = cmp.propagate(t.up_index, t.down_index,
+    cmp = CochainMessagePassing(up_msg_size=1, down_msg_size=1,
+                 use_coboundary_msg=include_coboundary_links)
+    up_msg, down_msg, boundary_msg, coboundary_msg = cmp.propagate(t.up_index, t.down_index,
                                                t.boundary_index, None, x=t.x,
                                                up_attr=t.kwargs['up_attr'],
                                                down_attr=t.kwargs['down_attr'],
-                                               boundary_attr=t.kwargs['boundary_attr'])
+                                               boundary_attr=t.kwargs['boundary_attr'],
+                                               coboundary_attr=t.kwargs['coboundary_attr'])
 
     expected_up_msg = torch.zeros(1, 1)
     assert torch.equal(up_msg, expected_up_msg)
@@ -86,6 +108,113 @@ def test_propagate_at_two_cell_level_in_cmp_when_there_is_a_single_one():
 
     expected_boundary_msg = torch.tensor([[14]], dtype=torch.float)
     assert torch.equal(boundary_msg, expected_boundary_msg)
+    
+    if include_coboundary_links:
+        expected_coboundary_msg = torch.tensor([[0]], dtype=torch.float)
+    else:
+        expected_coboundary_msg = torch.tensor([[0]], dtype=torch.float)
+    assert torch.equal(coboundary_msg, expected_coboundary_msg)
+
+
+@pytest.mark.parametrize("include_coboundary_links", [True, False])
+def test_edge_propagate_in_cmp_2(include_coboundary_links):
+    """We test propagation at the edge level."""
+
+    molecular_complex = get_molecular_complex(include_coboundary_links)
+    e = molecular_complex.get_cochain_params(dim=1)
+    assert e.kwargs['boundary_index'] is not None, e.kwargs['boundary_index']
+
+    # Extract the message passing object and propagate
+    cmp = CochainMessagePassing(up_msg_size=1, down_msg_size=1,
+                 use_coboundary_msg=include_coboundary_links)
+    up_msg, down_msg, boundary_msg, coboundary_msg = cmp.propagate(e.up_index, e.down_index,
+                                               e.boundary_index, e.coboundary_index, x=e.x,
+                                               up_attr=e.kwargs['up_attr'],
+                                               down_attr=e.kwargs['down_attr'],
+                                               boundary_attr=e.kwargs['boundary_attr'],
+                                               coboundary_attr=e.kwargs['coboundary_attr'])
+    expected_down_msg = torch.tensor([[14], [17], [11], [4], [11], [12], [23], [19], [15]], dtype=torch.float)
+    assert torch.equal(down_msg, expected_down_msg)
+
+    expected_up_msg = torch.tensor([[9], [34], [7], [6], [23], [22], [21], [20], [0]], dtype=torch.float)
+    assert torch.equal(up_msg, expected_up_msg)
+
+    expected_boundary_msg = torch.tensor([[3], [5], [7], [5], [8], [11], [13], [9], [15]], dtype=torch.float)
+    assert torch.equal(boundary_msg, expected_boundary_msg)
+
+    if include_coboundary_links:
+        expected_coboundary_msg = torch.tensor([[1], [3], [1], [1], [2], [2], [2], [2], [0]], dtype=torch.float)
+    else:
+        expected_coboundary_msg = torch.tensor([[0], [0], [0], [0], [0], [0], [0], [0], [0]], dtype=torch.float)
+    assert torch.equal(coboundary_msg, expected_coboundary_msg)
+        
+
+@pytest.mark.parametrize("include_coboundary_links", [True, False])
+def test_propagate_at_vertex_level_in_cmp_2(include_coboundary_links):
+    """We test propagation at the vertex level. This makes sure propagate works when
+    down_index is None.
+    """
+
+    molecular_complex = get_molecular_complex(include_coboundary_links)
+    v = molecular_complex.get_cochain_params(dim=0)
+    ###################### FIX: v.coboundary_attr is None here... It shouldn't be
+    # Extract the message passing object and propagate
+    cmp = CochainMessagePassing(up_msg_size=1, down_msg_size=1,
+                 use_coboundary_msg=include_coboundary_links)
+    up_msg, down_msg, boundary_msg, coboundary_msg = cmp.propagate(v.up_index, v.down_index,
+                                               v.boundary_index, v.coboundary_index, x=v.x,
+                                               up_attr=v.kwargs['up_attr'],
+                                               down_attr=v.kwargs['down_attr'],
+                                               boundary_attr=v.kwargs['boundary_attr'],
+                                               coboundary_attr=v.kwargs['coboundary_attr'])
+
+    expected_up_msg = torch.tensor([[6], [11], [11], [4], [9], [12], [16], [7]], dtype=torch.float)
+    assert torch.equal(up_msg, expected_up_msg)
+
+    expected_down_msg = torch.zeros(8, 1)
+    assert torch.equal(down_msg, expected_down_msg)
+
+    expected_boundary_msg = torch.zeros(8, 1)
+    assert torch.equal(boundary_msg, expected_boundary_msg)
+
+    if include_coboundary_links:
+        expected_coboundary_msg = torch.tensor([[5], [11], [10], [7], [11], [13], [24], [9]], dtype=torch.float)
+    else:
+        expected_coboundary_msg = torch.tensor([[0], [0], [0], [0], [0], [0], [0], [0]], dtype=torch.float)
+    assert torch.equal(coboundary_msg, expected_coboundary_msg)
+
+
+@pytest.mark.parametrize("include_coboundary_links", [True, False])
+def test_propagate_at_two_cell_level_in_cmp(include_coboundary_links):
+    """We test propagation at the two_cell level"""
+
+    molecular_complex = get_molecular_complex(include_coboundary_links)
+    t = molecular_complex.get_cochain_params(dim=2)
+
+    # Extract the message passing object and propagate
+    cmp = CochainMessagePassing(up_msg_size=1, down_msg_size=1,
+                 use_coboundary_msg=include_coboundary_links)
+    up_msg, down_msg, boundary_msg, coboundary_msg = cmp.propagate(t.up_index, t.down_index,
+                                               t.boundary_index, None, x=t.x,
+                                               up_attr=t.kwargs['up_attr'],
+                                               down_attr=t.kwargs['down_attr'],
+                                               boundary_attr=t.kwargs['boundary_attr'],
+                                               coboundary_attr=t.kwargs['coboundary_attr'])
+
+    expected_up_msg = torch.zeros(2, 1)
+    assert torch.equal(up_msg, expected_up_msg)
+
+    expected_down_msg = torch.tensor([[2], [2]], dtype=torch.float)
+    assert torch.equal(down_msg, expected_down_msg)
+
+    expected_boundary_msg = torch.tensor([[10], [18]], dtype=torch.float)
+    assert torch.equal(boundary_msg, expected_boundary_msg)
+    
+    if include_coboundary_links:
+        expected_coboundary_msg = torch.zeros(2, 1)
+    else:
+        expected_coboundary_msg = torch.zeros(2, 1)
+    assert torch.equal(coboundary_msg, expected_coboundary_msg)
 
 
 def test_propagate_at_two_cell_level_in_cmp():
@@ -271,3 +400,6 @@ def test_cmp_messaging_with_replicated_adjs():
                                         [2+3+5+6]],       # ring 1
                                       dtype=torch.float)
     assert torch.equal(t_boundary_msg, expected_t_boundary_msg)
+
+
+# TODO: test compute_ring_2complex or something similar in data.utils with coboundary computation True
