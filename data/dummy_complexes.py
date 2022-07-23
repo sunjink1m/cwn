@@ -42,7 +42,7 @@ def get_mol_testing_complex_list():
             get_filled_square_complex(), get_molecular_complex(), get_fullstop_complex(), get_colon_complex()]
 
 
-def get_house_complex():
+def get_house_complex(include_coboundary_links=False):
     """
     Returns the `house graph` below with dummy features.
     The `house graph` (3-2-4 is a filled triangle):
@@ -69,7 +69,13 @@ def get_house_complex():
     v_shared_coboundaries = torch.tensor([0, 0, 3, 3, 1, 1, 2, 2, 5, 5, 4, 4], dtype=torch.long)
     v_x = torch.tensor([[1], [2], [3], [4], [5]], dtype=torch.float)
     yv = torch.tensor([0, 0, 0, 0, 0], dtype=torch.long)
-    v_cochain = Cochain(dim=0, x=v_x, upper_index=v_up_index, shared_coboundaries=v_shared_coboundaries, y=yv)
+    # Include coboundary index information if include_coboundary_links=False. 
+    # Else, create Cochain object with it omitted.
+    v_coboundary_index = torch.tensor([[0, 3, 0, 1, 1, 2, 5, 2, 3, 4, 4, 5], 
+                                       [0, 0, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4]],
+                                    dtype=torch.long) if include_coboundary_links else None
+    v_cochain = Cochain(dim=0, x=v_x, upper_index=v_up_index, shared_coboundaries=v_shared_coboundaries, y=yv,
+                        coboundary_index=v_coboundary_index)
 
     e_boundaries = [[0, 1], [1, 2], [2, 3], [0, 3], [3, 4], [2, 4]]
     e_boundary_index = torch.stack([
@@ -84,11 +90,14 @@ def get_house_complex():
         dtype=torch.long)
     e_shared_boundaries = torch.tensor([1, 1, 0, 0, 2, 2, 2, 2, 3, 3, 3, 3, 2, 2, 3, 3, 4, 4],
         dtype=torch.long)
+    e_coboundary_index = torch.tensor([[0, 0, 0], 
+                                       [2, 4, 5]],
+                                    dtype=torch.long) if include_coboundary_links else None
     e_x = torch.tensor([[1], [2], [3], [4], [5], [6]], dtype=torch.float)
     ye = torch.tensor([1, 1, 1, 1, 1, 1], dtype=torch.long)
     e_cochain = Cochain(dim=1, x=e_x, upper_index=e_up_index, lower_index=e_down_index,
         shared_coboundaries=e_shared_coboundaries, shared_boundaries=e_shared_boundaries,
-        boundary_index=e_boundary_index, y=ye)
+        boundary_index=e_boundary_index, coboundary_index=e_coboundary_index, y=ye)
 
     t_boundaries = [[2, 4, 5]]
     t_boundary_index = torch.stack([
@@ -508,7 +517,7 @@ def get_filled_square_complex():
     return Complex(v_cochain, e_cochain, c_cochain, y=y)
 
 
-def get_molecular_complex():
+def get_molecular_complex(include_coboundary_links=False):
     """This is a molecule with filled rings.
 
      3---2---4---5
@@ -531,7 +540,13 @@ def get_molecular_complex():
         dtype=torch.long)
     v_x = torch.tensor([[1], [2], [3], [4], [5], [6], [7], [8]], dtype=torch.float)
     yv = torch.tensor([0, 0, 0, 0, 0, 0, 0, 0], dtype=torch.long)
-    v_cochain = Cochain(dim=0, x=v_x, upper_index=v_up_index, shared_coboundaries=v_shared_coboundaries, y=yv)
+    # Include coboundary index information if include_coboundary_links=False. 
+    # Else, create Cochain object with it omitted.
+    v_coboundary_index = torch.tensor([[0, 3, 0, 1, 7, 1, 2, 4, 2, 3, 4, 5, 5, 6, 6, 7, 8, 8], 
+                                       [0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 6, 7]],
+                                    dtype=torch.long) if include_coboundary_links else None
+    v_cochain = Cochain(dim=0, x=v_x, upper_index=v_up_index, shared_coboundaries=v_shared_coboundaries, y=yv, 
+                        coboundary_index=v_coboundary_index)
 
     e_boundaries = [[0, 1], [1, 2], [2, 3], [0, 3], [1, 6], [2, 4], [4, 5], [5, 6], [6, 7]]
     e_boundary_index = torch.stack([
@@ -554,9 +569,14 @@ def get_molecular_complex():
         dtype=torch.long)
     e_upper_index = torch.cat((e_upper_index_c1, e_upper_index_c2), dim=-1)
     e_shared_coboundaries = torch.tensor([0]*12 + [1]*20, dtype=torch.long)
+    
+    e_coboundary_index = torch.tensor([[0, 0, 0, 0, 1, 1, 1, 1, 1], 
+                                       [0, 1, 2, 3, 1, 4, 5, 6, 7]],
+                                    dtype=torch.long) if include_coboundary_links else None
 
     e_cochain = Cochain(dim=1, x=e_x, lower_index=e_down_index, shared_boundaries=e_shared_boundaries,
-        upper_index=e_upper_index, y=ye, shared_coboundaries=e_shared_coboundaries, boundary_index=e_boundary_index)
+        upper_index=e_upper_index, y=ye, shared_coboundaries=e_shared_coboundaries, boundary_index=e_boundary_index,
+        coboundary_index=e_coboundary_index)
 
     c_boundary_index = torch.LongTensor(
         [[0, 1, 2, 3, 1, 4, 5, 6, 7],
