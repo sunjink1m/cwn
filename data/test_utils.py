@@ -659,19 +659,19 @@ def test_coboundary_links(house_edge_index):
     v_params = house_complex.get_cochain_params(dim=0)
 
     assert list(v_params.kwargs['coboundary_index'].size()) == [2, 2*house_complex.edges.num_cells]
-    expected_v_coboundary_index = torch.tensor([[0, 0, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4],
-                                        [0, 1, 0, 2, 2, 3, 4, 1, 3, 5, 4, 5]], dtype=torch.long)
+    expected_v_coboundary_index = torch.tensor([[0, 1, 0, 2, 2, 3, 4, 1, 3, 5, 4, 5], 
+                                                [0, 0, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4]], dtype=torch.long)
     assert torch.equal(v_params.coboundary_index, expected_v_coboundary_index)
 
     # dim 1
     e_params = house_complex.get_cochain_params(dim=1)
 
     assert list(e_params.kwargs['coboundary_index'].size()) == [2, 7]
-    assert torch.equal(e_params.kwargs['coboundary_index'][0], torch.LongTensor([0, 1, 2, 3, 3, 4, 5]))
-    assert torch.equal(e_params.kwargs['coboundary_index'][1], torch.LongTensor([0, 0, 0, 0, 1, 1, 1]))
+    assert torch.equal(e_params.kwargs['coboundary_index'][0], torch.LongTensor([0, 0, 0, 0, 1, 1, 1]))
+    assert torch.equal(e_params.kwargs['coboundary_index'][1], torch.LongTensor([0, 1, 2, 3, 3, 4, 5]))
     
-    expected_e_coboundary_index = torch.tensor([[0, 1, 2, 3, 3, 4, 5],
-                                          [0, 0, 0, 0, 1, 1, 1]], dtype=torch.long)
+    expected_e_coboundary_index = torch.tensor([[0, 0, 0, 0, 1, 1, 1], 
+                                                [0, 1, 2, 3, 3, 4, 5]], dtype=torch.long)
     assert torch.equal(e_params.kwargs['coboundary_index'], expected_e_coboundary_index)
     
     # dim 2
