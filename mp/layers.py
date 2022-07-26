@@ -657,6 +657,7 @@ class DenseCINCochainConv(CochainMessagePassing):
                  up_msg_size: int,
                  down_msg_size: int,
                  boundary_msg_size: Optional[int],
+                 coboundary_msg_size: Optional[int],
                  msg_up_nn: Callable,
                  msg_down_nn: Callable,
                  msg_boundaries_nn: Callable,
@@ -669,7 +670,9 @@ class DenseCINCochainConv(CochainMessagePassing):
                  eps: float = 0.,
                  train_eps: bool = False):
         super(DenseCINCochainConv, self).__init__(up_msg_size, down_msg_size, boundary_msg_size=boundary_msg_size,
-                                                 use_down_msg=True)
+                                                coboundary_msg_size=coboundary_msg_size,
+                                                use_down_msg=True,
+                                                use_coboundary_msg=True)
         self.dim = dim
         self.msg_up_nn = msg_up_nn
         self.msg_down_nn = msg_down_nn
@@ -714,6 +717,7 @@ class DenseCINCochainConv(CochainMessagePassing):
         out_up = self.update_up_nn(out_up)
         out_down = self.update_down_nn(out_down)
         out_boundaries = self.update_boundaries_nn(out_boundaries)
+        out_coboundaries = self.update_coboundaries_nn(out_coboundaries)
 
         # We need to combine the two such that the output is injective
         # Because the cross product of countable spaces is countable, then such a function exists.
@@ -851,6 +855,7 @@ class DenseCINConv(torch.nn.Module):
                 kwargs['act_module']())
 
             mp = DenseCINCochainConv(dim, up_msg_size, down_msg_size, boundary_msg_size=boundary_msg_size,
+                coboundary_msg_size=coboundary_msg_size,
                 msg_up_nn=msg_up_nn, msg_boundaries_nn=msg_boundaries_nn, update_up_nn=update_up_nn,
                 msg_down_nn=msg_down_nn, update_down_nn=update_down_nn,
                 msg_coboundaries_nn=msg_coboundaries_nn, update_coboundaries_nn=update_coboundaries_nn,

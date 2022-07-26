@@ -3,7 +3,7 @@ import torch.nn.functional as F
 
 from torch.nn import Linear, Embedding, Sequential, BatchNorm1d as BN
 from torch_geometric.nn import JumpingKnowledge, GINEConv
-from mp.layers import InitReduceConv, EmbedVEWithReduce, OGBEmbedVEWithReduce, SparseCINConv, LessSparseCINConv
+from mp.layers import InitReduceConv, EmbedVEWithReduce, OGBEmbedVEWithReduce, SparseCINConv, LessSparseCINConv, DenseCINConv
 from ogb.graphproppred.mol_encoder import AtomEncoder, BondEncoder
 from data.complex import ComplexBatch
 from mp.nn import pool_complex, get_pooling_fn, get_nonlinearity, get_graph_norm
@@ -550,7 +550,7 @@ class EmbedLessSparseCIN(torch.nn.Module):
     https://github.com/rusty1s/pytorch_geometric/blob/master/benchmark/kernel/gin.py
 
     Code is identical to EmbedSparseCIN except:
-        - The self.convs is made of LessSparseCINConv's instead of EmbedSparseCIN's
+        - The self.convs is made of LessSparseCINConv's instead of SparseCINConv's
         - There is an additional arguement, 'use_boundaries' which is input to 
           LessSparseCINConv
         
@@ -706,17 +706,15 @@ class EmbedLessSparseCIN(torch.nn.Module):
         return self.__class__.__name__
 
 
-class EmbedLessSparseCIN(torch.nn.Module):
+class EmbedDenseCIN(torch.nn.Module):
     """
     A cellular version of GIN with some tailoring to nimbly work on molecules from the ZINC database.
 
     This model is based on
     https://github.com/rusty1s/pytorch_geometric/blob/master/benchmark/kernel/gin.py
 
-    Code is identical to EmbedSparseCIN except:
-        - The self.convs is made of LessSparseCINConv's instead of EmbedSparseCIN's
-        - There is an additional arguement, 'use_boundaries' which is input to 
-          LessSparseCINConv
+    Code is identical to EmbedLessSparseCIN except:
+        - The self.convs is made of DenseCINConv's instead of LessSparseCINConv's
         
     """
 
@@ -727,7 +725,7 @@ class EmbedLessSparseCIN(torch.nn.Module):
                  init_reduce='sum', embed_edge=False, embed_dim=None, use_coboundaries=False,
                  use_boundaries=False,
                  graph_norm='bn'):
-        super(EmbedLessSparseCIN, self).__init__()
+        super(EmbedDenseCIN, self).__init__()
 
         self.max_dim = max_dim
         if readout_dims is not None:
@@ -757,10 +755,12 @@ class EmbedLessSparseCIN(torch.nn.Module):
         for i in range(num_layers):
             layer_dim = embed_dim if i == 0 else hidden
             self.convs.append(
-                LessSparseCINConv(up_msg_size=layer_dim, down_msg_size=layer_dim,
+                DenseCINConv(up_msg_size=layer_dim, down_msg_size=layer_dim,
+                    coboundary_msg_size=layer_dim,
                     boundary_msg_size=layer_dim, passed_msg_boundaries_nn=None,
                     passed_msg_up_nn=None, passed_update_up_nn=None,
                     passed_msg_down_nn=None, passed_update_down_nn=None,
+                    passed_msg_coboundaries_nn=None, passed_update_coboundaries_nn=None,
                     passed_update_boundaries_nn=None, train_eps=train_eps, max_dim=self.max_dim,
                     hidden=hidden, act_module=act_module, layer_dim=layer_dim,
                     graph_norm=self.graph_norm, use_coboundaries=use_coboundaries,
@@ -804,7 +804,7 @@ class EmbedLessSparseCIN(torch.nn.Module):
             assert data.cochains[1].x.size(-1) == 1
 
         # Embed and populate higher-levels
-        params = data.get_all_cochain_params(max_dim=self.max_dim, include_down_features=True)
+        params = data.get_all_cochain_params(max_dim=self.max_dim, include_coboundary_features=True)
         xs = list(self.init_conv(*params))
 
         # Apply dropout on the input features like all models do on ZINC.
@@ -814,7 +814,7 @@ class EmbedLessSparseCIN(torch.nn.Module):
         data.set_xs(xs)
 
         for c, conv in enumerate(self.convs):
-            params = data.get_all_cochain_params(max_dim=self.max_dim, include_down_features=True)
+            params = data.get_all_cochain_params(max_dim=self.max_dim, include_coboundary_features=True)
             start_to_process = 0
             xs = conv(*params, start_to_process=start_to_process)
             data.set_xs(xs)
