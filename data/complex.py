@@ -58,7 +58,8 @@ class Cochain(object):
     """
     def __init__(self, dim: int, x: Tensor = None, upper_index: Adj = None, lower_index: Adj = None,
                  shared_boundaries: Tensor = None, shared_coboundaries: Tensor = None, mapping: Tensor = None,
-                 boundary_index: Adj = None, upper_orient=None, lower_orient=None, y=None, **kwargs):
+                 boundary_index: Adj = None, coboundary_index: Adj = None,
+                 upper_orient=None, lower_orient=None, y=None, **kwargs):
         if dim == 0:
             assert lower_index is None
             assert shared_boundaries is None
@@ -72,6 +73,7 @@ class Cochain(object):
         self.upper_index = upper_index
         self.lower_index = lower_index
         self.boundary_index = boundary_index
+        self.coboundary_index = coboundary_index
         self.y = y
         self.shared_boundaries = shared_boundaries
         self.shared_coboundaries = shared_coboundaries
@@ -138,7 +140,7 @@ class Cochain(object):
         :obj:`key` will get concatenated when creating batches.
         """
         if key in ['upper_index', 'lower_index', 'shared_boundaries',
-                   'shared_coboundaries', 'boundary_index']:
+                   'shared_coboundaries', 'boundary_index', 'coboundary_index']:
             return -1
         # by default, concatenate sparse matrices diagonally.
         elif isinstance(value, SparseTensor):
@@ -160,7 +162,14 @@ class Cochain(object):
         elif key == 'boundary_index':
             boundary_inc = self.num_cells_down if self.num_cells_down is not None else 0
             cell_inc = self.num_cells if self.num_cells is not None else 0
-            inc = [[boundary_inc], [cell_inc]]
+            inc = [[boundary_inc], [cell_inc]] # The first number is used to increase value 
+                                               # of numbers on first row of boundary_index
+                                               # and the second number is used for the 
+                                               # second row.
+        elif key == 'coboundary_index':
+            coboundary_inc = self.num_cells_up if self.num_cells_up is not None else 0
+            cell_inc = self.num_cells if self.num_cells is not None else 0
+            inc = [[coboundary_inc], [cell_inc]]
         else:
             inc = 0
         if inc is None:
@@ -550,7 +559,8 @@ class Complex(object):
                            max_dim : int=2,
                            include_top_features=True,
                            include_down_features=True,
-                           include_boundary_features=True) -> CochainMessagePassingParams:
+                           include_boundary_features=True,
+                           include_coboundary_features=True) -> CochainMessagePassingParams:
         """
         Conveniently constructs all necessary input parameters to perform higher-dim
         message passing on the cochain of specified `dim`.
@@ -562,6 +572,7 @@ class Complex(object):
             include_top_features: Whether to include the top features from level max_dim+1.
             include_down_features: Include the features for down adjacency
             include_boundary_features: Include the features for the boundary
+            include_coboundary_features: Include the features for the coboundary
         Returns:
             An object of type CochainMessagePassingParams
         """
@@ -592,10 +603,17 @@ class Complex(object):
                 boundary_index = cells.boundary_index
                 if dim > 0 and self.cochains[dim - 1].x is not None:
                     boundary_features = self.cochains[dim - 1].x
-
+            # Add coboundary features 
+            # REVIEW: Is this correctly written?
+            coboundary_index, coboundary_features = None, None
+            if include_coboundary_features and cells.coboundary_index is not None:
+                coboundary_index = cells.coboundary_index
+                if self.cochains[dim + 1].x is not None: 
+                    coboundary_features = self.cochains[dim + 1].x
             inputs = CochainMessagePassingParams(x, upper_index, lower_index,
                                                up_attr=upper_features, down_attr=lower_features,
-                                               boundary_attr=boundary_features, boundary_index=boundary_index)
+                                               boundary_attr=boundary_features, boundary_index=boundary_index,
+                                               coboundary_attr=coboundary_features, coboundary_index=coboundary_index)
         else:
             raise NotImplementedError(
                 'Dim {} is not present in the complex or not yet supported.'.format(dim))
@@ -605,7 +623,8 @@ class Complex(object):
                                max_dim:int=2,
                                include_top_features=True,
                                include_down_features=True,
-                               include_boundary_features=True) -> List[CochainMessagePassingParams]:
+                               include_boundary_features=True,
+                               include_coboundary_features=False) -> List[CochainMessagePassingParams]:
         """Extracts the cochain parameters for message passing on the cochains up to max_dim.
 
         Args:

@@ -10,7 +10,7 @@ from data.dummy_complexes import get_testing_complex_list
 from data.data_loading import DataLoader, load_dataset
 
 
-def validate_double_house(batch):
+def validate_double_house(batch, include_coboundary_links=False):
     
     expected_node_upper = torch.tensor([[0, 1, 0, 3, 1, 2, 2, 3, 2, 4, 3, 4, 5, 6, 5, 8, 6, 7, 7, 8, 7, 9, 8, 9],
                                         [1, 0, 3, 0, 2, 1, 3, 2, 4, 2, 4, 3, 6, 5, 8, 5, 7, 6, 8, 7, 9, 7, 9, 8]], dtype=torch.long)
@@ -35,6 +35,12 @@ def validate_double_house(batch):
     expected_two_cell_y = torch.tensor([2, 2], dtype=torch.long)
     expected_two_cell_batch = torch.tensor([0, 1], dtype=torch.long)
     
+    # used only if include_coboundary_links==True
+    expected_node_coboundary = torch.tensor([[0, 3, 0, 1, 1, 2, 5, 2, 3, 4, 4, 5, 0+6, 3+6, 0+6, 1+6, 1+6, 2+6, 5+6, 2+6, 3+6, 4+6, 4+6, 5+6,],
+                                             [0, 0, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 0+5, 0+5, 1+5, 1+5, 2+5, 2+5, 2+5, 3+5, 3+5, 3+5, 4+5, 4+5,]], dtype=torch.long)
+    expected_edge_coboundary = torch.tensor([[0, 0, 0, 0+1, 0+1, 0+1],
+                                             [2, 4, 5, 2+6, 4+6, 5+6]], dtype=torch.long)
+    
     assert torch.equal(expected_node_upper, batch.nodes.upper_index)
     assert torch.equal(expected_node_shared_coboundaries, batch.nodes.shared_coboundaries)
     assert batch.nodes.lower_index is None
@@ -42,6 +48,10 @@ def validate_double_house(batch):
     assert torch.equal(expected_node_x, batch.nodes.x)
     assert torch.equal(expected_node_y, batch.nodes.y)
     assert torch.equal(expected_node_batch, batch.nodes.batch)
+    if include_coboundary_links:
+        assert torch.equal(expected_node_coboundary, batch.nodes.coboundary_index)
+    else:
+        assert batch.edges.coboundary_index is None
     
     assert torch.equal(expected_edge_upper, batch.edges.upper_index)
     assert torch.equal(expected_edge_shared_coboundaries, batch.edges.shared_coboundaries)
@@ -50,6 +60,10 @@ def validate_double_house(batch):
     assert torch.equal(expected_edge_x, batch.edges.x)
     assert torch.equal(expected_edge_y, batch.edges.y)
     assert torch.equal(expected_edge_batch, batch.edges.batch)
+    if include_coboundary_links:
+        assert torch.equal(expected_edge_coboundary, batch.edges.coboundary_index)
+    else:
+        assert batch.edges.coboundary_index is None
     
     assert batch.two_cells.upper_index is None
     assert batch.two_cells.lower_index is None
@@ -58,7 +72,7 @@ def validate_double_house(batch):
     assert torch.equal(expected_two_cell_x, batch.two_cells.x)
     assert torch.equal(expected_two_cell_y, batch.two_cells.y)
     assert torch.equal(expected_two_cell_batch, batch.two_cells.batch)
-    
+
 
 def validate_square_dot_and_square(batch):
     
@@ -76,7 +90,7 @@ def validate_square_dot_and_square(batch):
     expected_edge_x = torch.tensor([[1], [2], [3], [4], [1], [2], [3], [4]], dtype=torch.float)
     expected_edge_y = torch.tensor([1, 1, 1, 1, 1, 1, 1, 1,], dtype=torch.long)
     expected_edge_batch = torch.tensor([0, 0, 0, 0, 1, 1, 1, 1], dtype=torch.long)
-    
+
     assert torch.equal(expected_node_upper, batch.nodes.upper_index)
     assert torch.equal(expected_node_shared_coboundaries, batch.nodes.shared_coboundaries)
     assert batch.nodes.lower_index is None
@@ -94,7 +108,7 @@ def validate_square_dot_and_square(batch):
     assert torch.equal(expected_edge_batch, batch.edges.batch)
     
 
-def validate_kite_and_house(batch):
+def validate_kite_and_house(batch, include_coboundary_links=False):
 
     kite_node_upper = torch.tensor([[0, 1, 0, 2, 1, 2, 1, 3, 2, 3, 3, 4],
                                     [1, 0, 2, 0, 2, 1, 3, 1, 3, 2, 4, 3]], dtype=torch.long)
@@ -141,6 +155,12 @@ def validate_kite_and_house(batch):
     expected_two_cell_y = torch.tensor([2, 2, 2], dtype=torch.long)
     expected_two_cell_batch = torch.tensor([0, 0, 1], dtype=torch.long)
     
+    # used only if include_coboundary_links==True
+    expected_node_coboundary = torch.tensor([[0, 2, 0, 1, 3, 1, 2, 4, 3, 4, 5, 0+6, 3+6, 0+6, 1+6, 1+6, 2+6, 5+6, 2+6, 3+6, 4+6, 4+6, 5+6],
+                                             [0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 4, 0+5, 0+5, 1+5, 1+5, 2+5, 2+5, 2+5, 3+5, 3+5, 3+5, 4+5, 4+5]], dtype=torch.long)
+    expected_edge_coboundary = torch.tensor([[0, 0, 1, 0, 1, 1, 0+2, 0+2, 0+2],
+                                             [0, 1, 1, 2, 3, 4, 2+6, 4+6, 5+6]], dtype=torch.long)
+    
     assert torch.equal(expected_node_upper, batch.nodes.upper_index)
     assert torch.equal(expected_node_shared_coboundaries, batch.nodes.shared_coboundaries)
     assert batch.nodes.lower_index is None
@@ -148,6 +168,10 @@ def validate_kite_and_house(batch):
     assert torch.equal(expected_node_x, batch.nodes.x)
     assert torch.equal(expected_node_y, batch.nodes.y)
     assert torch.equal(expected_node_batch, batch.nodes.batch)
+    if include_coboundary_links:
+        assert torch.equal(expected_node_coboundary, batch.nodes.coboundary_index)
+    else:
+        assert batch.edges.coboundary_index is None
     
     assert torch.equal(expected_edge_upper, batch.edges.upper_index)
     assert torch.equal(expected_edge_shared_coboundaries, batch.edges.shared_coboundaries)
@@ -156,6 +180,10 @@ def validate_kite_and_house(batch):
     assert torch.equal(expected_edge_x, batch.edges.x)
     assert torch.equal(expected_edge_y, batch.edges.y)
     assert torch.equal(expected_edge_batch, batch.edges.batch)
+    if include_coboundary_links:
+        assert torch.equal(expected_edge_coboundary, batch.edges.coboundary_index)
+    else:
+        assert batch.edges.coboundary_index is None
     
     assert batch.two_cells.upper_index is None
     assert batch.two_cells.shared_coboundaries is None
@@ -166,7 +194,7 @@ def validate_kite_and_house(batch):
     assert torch.equal(expected_two_cell_batch, batch.two_cells.batch)
     
     
-def validate_house_and_square(batch):
+def validate_house_and_square(batch, include_coboundary_links=False):
     
     expected_node_upper = torch.tensor([[0, 1, 0, 3, 1, 2, 2, 3, 2, 4, 3, 4, 5, 6, 5, 8, 6, 7, 7, 8],
                                         [1, 0, 3, 0, 2, 1, 3, 2, 4, 2, 4, 3, 6, 5, 8, 5, 7, 6, 8, 7]], dtype=torch.long)
@@ -190,6 +218,14 @@ def validate_house_and_square(batch):
     expected_two_cell_x = torch.tensor([[1]], dtype=torch.float)
     expected_two_cell_y = torch.tensor([2], dtype=torch.long)
     expected_two_cell_batch = torch.tensor([0], dtype=torch.long)
+
+
+    # used only if include_coboundary_links==True
+    expected_node_coboundary = torch.tensor([[0, 3, 0, 1, 1, 2, 5, 2, 3, 4, 4, 5, 0+6, 3+6, 0+6, 1+6, 1+6, 2+6, 2+6, 3+6],
+                                             [0, 0, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 0+5, 0+5, 1+5, 1+5, 2+5, 2+5, 3+5, 3+5]], dtype=torch.long)
+    expected_edge_coboundary = torch.tensor([[0, 0, 0],
+                                             [2, 4, 5]], dtype=torch.long)
+    
     
     assert torch.equal(expected_node_upper, batch.nodes.upper_index)
     assert torch.equal(expected_node_shared_coboundaries, batch.nodes.shared_coboundaries)
@@ -198,6 +234,10 @@ def validate_house_and_square(batch):
     assert torch.equal(expected_node_x, batch.nodes.x)
     assert torch.equal(expected_node_y, batch.nodes.y)
     assert torch.equal(expected_node_batch, batch.nodes.batch)
+    if include_coboundary_links:
+        assert torch.equal(expected_node_coboundary, batch.nodes.coboundary_index)
+    else:
+        assert batch.edges.coboundary_index is None
     
     assert torch.equal(expected_edge_upper, batch.edges.upper_index)
     assert torch.equal(expected_edge_shared_coboundaries, batch.edges.shared_coboundaries)
@@ -206,6 +246,10 @@ def validate_house_and_square(batch):
     assert torch.equal(expected_edge_x, batch.edges.x)
     assert torch.equal(expected_edge_y, batch.edges.y)
     assert torch.equal(expected_edge_batch, batch.edges.batch)
+    if include_coboundary_links:
+        assert torch.equal(expected_edge_coboundary, batch.edges.coboundary_index)
+    else:
+        assert batch.edges.coboundary_index is None
     
     assert batch.two_cells.upper_index is None
     assert batch.two_cells.lower_index is None
@@ -317,8 +361,9 @@ def validate_house_no_batching(batch):
     assert torch.equal(expected_two_cell_y, batch.two_cells.y)
     assert torch.equal(expected_two_cell_batch, batch.two_cells.batch)
     
-    
-def test_double_house_batching():
+
+@pytest.mark.parametrize("include_coboundary_links", [True, False])    
+def test_double_house_batching(include_coboundary_links):
     """
        4         9
       / \       / \
@@ -339,14 +384,15 @@ def test_double_house_batching():
      .---.     .---.
     """
     
-    house_1 = get_house_complex()
-    house_2 = get_house_complex()
+    house_1 = get_house_complex(include_coboundary_links)
+    house_2 = get_house_complex(include_coboundary_links)
     complex_list = [house_1, house_2]
     batch = ComplexBatch.from_complex_list(complex_list)
-    validate_double_house(batch)
-    
-    
-def test_house_and_square_batching():
+    validate_double_house(batch, include_coboundary_links)
+
+
+@pytest.mark.parametrize("include_coboundary_links", [True, False])    
+def test_house_and_square_batching(include_coboundary_links):
     """
        4
       / \
@@ -367,12 +413,12 @@ def test_house_and_square_batching():
      .---.     .---.
     """
     
-    house_1 = get_house_complex()
-    square = get_square_complex()
+    house_1 = get_house_complex(include_coboundary_links)
+    square = get_square_complex(include_coboundary_links)
     complex_list = [house_1, square]
     batch = ComplexBatch.from_complex_list(complex_list)
     
-    validate_house_and_square(batch)
+    validate_house_and_square(batch, include_coboundary_links)
     
     
 def test_house_square_house_batching():
@@ -427,8 +473,9 @@ def test_square_dot_square_batching():
     
     validate_square_dot_and_square(batch)
     
-    
-def test_kite_house_batching():
+
+@pytest.mark.parametrize("include_coboundary_links", [True, False])   
+def test_kite_house_batching(include_coboundary_links):
     
     '''
     
@@ -451,39 +498,40 @@ def test_kite_house_batching():
                        .---.
     
     '''
-    kite = get_kite_complex()
-    house = get_house_complex()
+    kite = get_kite_complex(include_coboundary_links)
+    house = get_house_complex(include_coboundary_links)
     complex_list = [kite, house]
     batch = ComplexBatch.from_complex_list(complex_list)
     
-    validate_kite_and_house(batch)
+    validate_kite_and_house(batch, include_coboundary_links)
     
 
-def test_data_loader():
+@pytest.mark.parametrize("include_coboundary_links", [True, False])   
+def test_data_loader(include_coboundary_links):
     
     data_list_1 = [
-        get_house_complex(),
-        get_house_complex(),
-        get_house_complex(),
-        get_square_complex()]
+        get_house_complex(include_coboundary_links),
+        get_house_complex(include_coboundary_links),
+        get_house_complex(include_coboundary_links),
+        get_square_complex(include_coboundary_links)]
     
     data_list_2 = [
-        get_house_complex(),
-        get_square_complex(),
-        get_house_complex(),
-        get_house_complex()]
+        get_house_complex(include_coboundary_links),
+        get_square_complex(include_coboundary_links),
+        get_house_complex(include_coboundary_links),
+        get_house_complex(include_coboundary_links)]
     
     data_list_3 = [
-        get_house_complex(),
-        get_square_complex(),
+        get_house_complex(include_coboundary_links),
+        get_square_complex(include_coboundary_links),
         get_pyramid_complex(),
         get_pyramid_complex()]
     
     data_list_4 = [
         get_square_dot_complex(),
         get_square_complex(),
-        get_kite_complex(),
-        get_house_complex(),
+        get_kite_complex(include_coboundary_links),
+        get_house_complex(include_coboundary_links),
         get_house_complex()]
     
     data_loader_1 = DataLoader(data_list_1, batch_size=2)
@@ -496,9 +544,9 @@ def test_data_loader():
     for batch in data_loader_1:
         count += 1
         if count == 1:
-            validate_double_house(batch)
+            validate_double_house(batch, include_coboundary_links)
         elif count == 2:
-            validate_house_and_square(batch)
+            validate_house_and_square(batch, include_coboundary_links)
     assert count == 2
             
     count = 0
@@ -521,7 +569,7 @@ def test_data_loader():
         if count == 1:
             validate_square_dot_and_square(batch)
         elif count == 2:
-            validate_kite_and_house(batch)
+            validate_kite_and_house(batch, include_coboundary_links)
         else:
             validate_house_no_batching(batch)
     assert count == 3

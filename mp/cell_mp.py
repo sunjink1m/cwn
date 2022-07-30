@@ -252,16 +252,11 @@ class CochainMessagePassing(torch.nn.Module):
                     else:
                         data = kwargs.get(arg[9:-2], Parameter.empty)
                         size_data = data
-                # TODO: I suspect this elif needs to be modified for co-boundaries to work properly
+                # REVIEW: I don't know if this elif is written correctly..
                 elif adjacency == 'coboundary' and arg.startswith('coboundary_'):
-                    if dim == 0:
-                        # We need to use the coboundary attribute matrix (i.e. coboundary_attr) for the features
-                        # And we need to use the x matrix to extract the number of parent cells
-                        data = kwargs.get('coboundary_attr', Parameter.empty)
-                        size_data = kwargs.get(arg[11:-2], Parameter.empty)
-                    else:
-                        data = kwargs.get(arg[11:-2], Parameter.empty)
-                        size_data = data
+                    data = kwargs.get('coboundary_attr', Parameter.empty)
+                    size_data = kwargs.get(arg[11:-2], Parameter.empty)
+                    # size_data = data
                 else:
                     continue
 
@@ -421,7 +416,7 @@ class CochainMessagePassing(torch.nn.Module):
             boundary_out = self.__message_and_aggregate__(boundary_index, 'boundary', boundary_size, **kwargs)
 
         # coboundary messaging and aggregation
-        # TODO: I suspect the next three lines would need to change for co-boundaries to work properly
+        # REVIEW: Is this correctly written?
         coboundary_out = None
         if self.use_coboundary_msg and 'coboundary_attr' in kwargs and kwargs['coboundary_attr'] is not None:
             coboundary_out = self.__message_and_aggregate__(coboundary_index, 'coboundary', coboundary_size, **kwargs)

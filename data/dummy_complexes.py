@@ -214,7 +214,7 @@ def get_colon_complex():
     return Complex(v_cochain, y=y)
 
 
-def get_square_complex():
+def get_square_complex(include_coboundary_links=False):
     """
     Returns the `square graph` below with dummy features.
     The `square graph`:
@@ -231,12 +231,21 @@ def get_square_complex():
      |   |
      .---.
     """
+    if include_coboundary_links:
+        v_coboundary_index = torch.tensor([[0, 3, 0, 1, 1, 2, 2, 3],
+                                           [0, 0, 1, 1, 2, 2, 3, 3]], dtype=torch.long)
+        e_coboundary_index = None
+    else:
+        v_coboundary_index = None
+        e_coboundary_index = None
+
     v_up_index = torch.tensor([[0, 1, 0, 3, 1, 2, 2, 3],
                                [1, 0, 3, 0, 2, 1, 3, 2]], dtype=torch.long)
     v_shared_coboundaries = torch.tensor([0, 0, 3, 3, 1, 1, 2, 2], dtype=torch.long)
     v_x = torch.tensor([[1], [2], [3], [4]], dtype=torch.float)
     yv = torch.tensor([0, 0, 0, 0], dtype=torch.long)
-    v_cochain = Cochain(dim=0, x=v_x, upper_index=v_up_index, shared_coboundaries=v_shared_coboundaries, y=yv)
+    v_cochain = Cochain(dim=0, x=v_x, upper_index=v_up_index, shared_coboundaries=v_shared_coboundaries, y=yv,
+                        coboundary_index=v_coboundary_index)
 
     e_boundaries = [[0, 1], [1, 2], [2, 3], [0, 3]]
     e_boundary_index = torch.stack([
@@ -248,7 +257,7 @@ def get_square_complex():
     e_x = torch.tensor([[1], [2], [3], [4]], dtype=torch.float)
     ye = torch.tensor([1, 1, 1, 1], dtype=torch.long)
     e_cochain = Cochain(dim=1, x=e_x, lower_index=e_down_index, shared_boundaries=e_shared_boundaries, y=ye,
-        boundary_index=e_boundary_index)
+        boundary_index=e_boundary_index, coboundary_index=e_coboundary_index)
     
     y = torch.LongTensor([v_x.shape[0]])
     
@@ -296,7 +305,7 @@ def get_square_dot_complex():
     return Complex(v_cochain, e_cochain, y=y)
 
 
-def get_kite_complex():
+def get_kite_complex(include_coboundary_links=False):
     """
     Returns the `kite graph` below with dummy features.
     The `kite graph`:
@@ -314,12 +323,22 @@ def get_kite_complex():
     .---.
     
     """
+    if include_coboundary_links:
+        v_coboundary_index = torch.tensor([[0, 2, 0, 1, 3, 1, 2, 4, 3, 4, 5],
+                                           [0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 4]], dtype=torch.long)
+        e_coboundary_index = torch.tensor([[0, 0, 1, 0, 1, 1],
+                                           [0, 1, 1, 2, 3, 4]], dtype=torch.long)
+    else:
+        v_coboundary_index = None
+        e_coboundary_index = None
+    
     v_up_index = torch.tensor([[0, 1, 0, 2, 1, 2, 1, 3, 2, 3, 3, 4],
                                [1, 0, 2, 0, 2, 1, 3, 1, 3, 2, 4, 3]], dtype=torch.long)
     v_shared_coboundaries = torch.tensor([0, 0, 2, 2, 1, 1, 3, 3, 4, 4, 5, 5], dtype=torch.long)
     v_x = torch.tensor([[1], [2], [3], [4], [5]], dtype=torch.float)
     yv = torch.tensor([0, 0, 0, 0, 0], dtype=torch.long)
-    v_cochain = Cochain(dim=0, x=v_x, upper_index=v_up_index, shared_coboundaries=v_shared_coboundaries, y=yv)
+    v_cochain = Cochain(dim=0, x=v_x, upper_index=v_up_index, shared_coboundaries=v_shared_coboundaries, y=yv,
+                    coboundary_index=v_coboundary_index)
 
     e_boundaries = [[0, 1], [1, 2], [0, 2], [1, 3], [2, 3], [3, 4]]
     e_boundary_index = torch.stack([
@@ -339,7 +358,7 @@ def get_kite_complex():
     ye = torch.tensor([1, 1, 1, 1, 1, 1], dtype=torch.long)
     e_cochain = Cochain(dim=1, x=e_x, lower_index=e_down_index, shared_boundaries=e_shared_boundaries,
         upper_index=e_up_index, shared_coboundaries=e_shared_coboundaries, y=ye,
-        boundary_index=e_boundary_index)
+        boundary_index=e_boundary_index, coboundary_index=e_coboundary_index)
 
     t_boundaries = [[0, 1, 2], [1, 3, 4]]
     t_boundary_index = torch.stack([
