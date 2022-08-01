@@ -1006,14 +1006,14 @@ class SparseNormLayer(torch.nn.Module):
     """
 
     def __init__(self, hidden_sizes: List[int], norm_type: str ='batch', max_dim: int = 2, **kwargs):
-        super(SparseDeeperCCNConv, self).__init__()
-        assert max_dim==len(hidden_sizes), "You must provide the hidden size for each dimension!"
+        super(SparseNormLayer, self).__init__()
+        assert max_dim+1==len(hidden_sizes), "You must provide the hidden size for each dimension!"
         self.max_dim = max_dim
-        norm_layers = torch.nn.ModuleList()
+        self.norm_layers = torch.nn.ModuleList()
         # append a different norm layer for each dimension
         for dim in range(len(hidden_sizes)):
             norm_layer = self.norm_layer(norm_type, hidden_sizes[dim])
-            norm_layers.append(norm_layer)
+            self.norm_layers.append(norm_layer)
 
     def forward(self, *cochain_params: CochainMessagePassingParams, start_to_process=0):
         assert len(cochain_params) <= self.max_dim+1
@@ -1026,7 +1026,7 @@ class SparseNormLayer(torch.nn.Module):
                 out.append(self.norm_layers[dim](cochain_params[dim].x))
         return out
     
-    def norm_layer(norm_type, nc):
+    def norm_layer(self, norm_type, nc):
         # normalization layer 1d
         norm = norm_type.lower()
         if norm == 'batch' or 'bn':

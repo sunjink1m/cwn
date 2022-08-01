@@ -886,7 +886,7 @@ class EmbedSparseDeeperCCN(torch.nn.Module):
                  readout_dims=(0, 1, 2), final_readout='sum', apply_dropout_before='lin2',
                  init_reduce='sum', embed_edge=False, embed_dim=None, use_coboundaries=False,
                  graph_norm='bn'):
-        super(EmbedSparseCIN, self).__init__()
+        super(EmbedSparseDeeperCCN, self).__init__()
 
         self.max_dim = max_dim
         if readout_dims is not None:
@@ -922,8 +922,8 @@ class EmbedSparseDeeperCCN(torch.nn.Module):
             self.convs.append(
                 SparseDeeperCCNConv(up_msg_size=layer_dim, down_msg_size=layer_dim,
                     boundary_msg_size=layer_dim, max_dim=self.max_dim))
-            self.norms.append(SparseNormLayer(hidden_sizes=[layer_dim]*(max_dim+1)),
-                                                norm_type=graph_norm, max_dim=self.max_dim)
+            self.norms.append(SparseNormLayer(hidden_sizes=[layer_dim]*(max_dim+1),
+                                                norm_type=graph_norm, max_dim=self.max_dim))
         self.jump = JumpingKnowledge(jump_mode) if jump_mode is not None else None
         self.lin1s = torch.nn.ModuleList()
         for _ in range(max_dim + 1):
@@ -970,7 +970,7 @@ class EmbedSparseDeeperCCN(torch.nn.Module):
         # the first convolution is done without res connection
         params = data.get_all_cochain_params(max_dim=self.max_dim, include_down_features=False)
         start_to_process = 0
-        xs = self.convs[c][0](*params, start_to_process=start_to_process)
+        xs = self.convs[0](*params, start_to_process=start_to_process)
         data.set_xs(xs)
 
         if include_partial:
@@ -996,7 +996,7 @@ class EmbedSparseDeeperCCN(torch.nn.Module):
             params = data.get_all_cochain_params(max_dim=self.max_dim, include_down_features=False)
             xs = self.convs[c](*params, start_to_process=0)
             # addition (residual connection) (x_new = x_old + output_from_convolution) for each dimension
-            xs = [params[i].x+xs[i] for dim in range(len(xs))]
+            xs = [params[dim].x+xs[dim] for dim in range(len(xs))]
             data.set_xs(xs)
 
             if include_partial:
