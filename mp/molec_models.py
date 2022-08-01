@@ -894,8 +894,6 @@ class EmbedSparseDeeperCCN(torch.nn.Module):
         else:
             self.readout_dims = list(range(max_dim+1))
 
-        assert embed_dim==hidden, "These two need to be same because we need to add them together \
-                                      in order to do residual connections"
         
         if embed_dim is None:
             embed_dim = hidden
