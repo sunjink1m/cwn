@@ -1,6 +1,6 @@
 import torch
 
-from typing import Callable, Optional
+from typing import Callable, Optional, List
 from torch import Tensor
 from mp.cell_mp import CochainMessagePassing, CochainMessagePassingParams
 from torch_geometric.nn.inits import reset
@@ -9,6 +9,7 @@ from data.complex import Cochain
 from torch_scatter import scatter
 from ogb.graphproppred.mol_encoder import AtomEncoder, BondEncoder
 from abc import ABC, abstractmethod
+from mp.deepergcn_utils import SoftmaxAggregation, PowerMeanAggregation, MLP, MessageNorm
 
 
 class DummyCochainMessagePassing(CochainMessagePassing):
@@ -876,66 +877,94 @@ class DenseCINConv(torch.nn.Module):
 
 
 class SparseDeeperCCNCochainConv(CochainMessagePassing):
-    """This is a CIN Cochain layer that operates of boundaries and upper adjacent cells."""
+    """This is a CIN Cochain layer that operates of boundaries and upper adjacent cells.
+    
+        This layer is based on pytorch_geometric/torch_geometric/nn/conv/gen_conv.py
+    """
     def __init__(self, dim: int,
                  up_msg_size: int,
                  down_msg_size: int,
                  boundary_msg_size: Optional[int],
-                 msg_up_nn: Callable,
-                 msg_boundaries_nn: Callable,
-                 update_up_nn: Callable,
-                 update_boundaries_nn: Callable,
-                 combine_nn: Callable,
-                 eps: float = 0.,
-                 train_eps: bool = False):
-        super(SparseCINCochainConv, self).__init__(up_msg_size, down_msg_size, boundary_msg_size=boundary_msg_size,
+                 num_layers: int = 2,
+                 msg_norm: bool = True,
+                 learn_msg_scale: bool = True):
+        super(SparseCINCochainConv, self).__init__(up_msg_size, down_msg_size, 
+                                                 boundary_msg_size=boundary_msg_size,
                                                  use_down_msg=False)
         self.dim = dim
-        self.msg_up_nn = msg_up_nn
-        self.msg_boundaries_nn = msg_boundaries_nn
-        self.update_up_nn = update_up_nn
-        self.update_boundaries_nn = update_boundaries_nn
-        self.combine_nn = combine_nn
-        self.initial_eps = eps
-        if train_eps:
-            self.eps1 = torch.nn.Parameter(torch.Tensor([eps])) # for upper adjacencies
-            self.eps2 = torch.nn.Parameter(torch.Tensor([eps])) # for boundaries
-        else:
-            self.register_buffer('eps1', torch.Tensor([eps]))
-            self.register_buffer('eps2', torch.Tensor([eps]))
+
+        assert up_msg_size==boundary_msg_size, "These must be same because we use residual \
+                                                connections. IE: we have to add them together."
+
+        channels = [up_msg_size]
+        for i in range(num_layers-1):
+            channels.append(up_msg_size * 2)
+        channels.append(up_msg_size)
+        # TODO: some variables like norm, learn, eps and type of aggr_module can become arguments
+        self.mlp = MLP(channels, norm='batch')
+
+        self.up_aggr_module = SoftmaxAggregation(learn=True)
+        self.boundaries_aggr_module = SoftmaxAggregation(learn=True)
+
+        self.msg_norm = msg_norm
+        self.up_msg_norm = MessageNorm(learn_msg_scale) if msg_norm else None
+        self.boundaries_msg_norm = MessageNorm(learn_msg_scale) if msg_norm else None
+
+        self.eps = 1e-7
         self.reset_parameters()
 
     def forward(self, cochain: CochainMessagePassingParams):
+        original_x = torch.clone(cochain.x)
+
         out_up, _, out_boundaries, _ = self.propagate(cochain.up_index, cochain.down_index,
                                               cochain.boundary_index, None, x=cochain.x,
                                               up_attr=cochain.kwargs['up_attr'],
                                               boundary_attr=cochain.kwargs['boundary_attr'])
+        
+        # message normalization, as seen in DeeperGCN
+        if self.msg_norm:
+            # TODO: review whether we should normalize up & bound outputs seperately or together
+            out_up = self.msg_norm(original_x, out_up)
+            out_boundaries = self.msg_norm(original_x, out_boundaries)
 
-        # As in GIN, we can learn an injective update function for each multi-set
-        out_up += (1 + self.eps1) * cochain.x
-        out_boundaries += (1 + self.eps2) * cochain.x
-        out_up = self.update_up_nn(out_up)
-        out_boundaries = self.update_boundaries_nn(out_boundaries)
+        # residual connections, as seen in DeeperGCN
+        # TODO: review whether we really should just be adding all this together:
+        # It seems we are treating out_up and out_bound equally; i think that might lose information
+        out = original_x + out_up + out_boundaries
 
-        # We need to combine the two such that the output is injective
-        # Because the cross product of countable spaces is countable, then such a function exists.
-        # And we can learn it with another MLP.
-        return self.combine_nn(torch.cat([out_up, out_boundaries], dim=-1))
+        # mlp
+        return self.mlp(out)
 
     def reset_parameters(self):
-        reset(self.msg_up_nn)
-        reset(self.msg_boundaries_nn)
-        reset(self.update_up_nn)
-        reset(self.update_boundaries_nn)
-        reset(self.combine_nn)
-        self.eps1.data.fill_(self.initial_eps)
-        self.eps2.data.fill_(self.initial_eps)
+        reset(self.up_aggr_module)
+        reset(self.boundaries_aggr_module)
+        if self.msg_norm:
+            self.up_msg_norm.reset_parameters()
+            self.boundaries_msg_norm.reset_parameters()
 
     def message_up(self, up_x_j: Tensor, up_attr: Tensor) -> Tensor:
-        return self.msg_up_nn((up_x_j, up_attr))
+        msg = up_x_j if up_attr is None else up_x_j + up_attr
+        # TODO: implement concat(x_j, edge_attr) that can optionally replace x_j + edge_attr
+        return msg.relu() + self.eps
     
     def message_boundary(self, boundary_x_j: Tensor) -> Tensor:
-        return self.msg_boundaries_nn(boundary_x_j)
+        msg = boundary_x_j
+        return msg.relu() + self.eps
+    
+    def aggregate_up(self, inputs: Tensor, agg_up_index: Tensor,
+                     up_ptr: Optional[Tensor] = None,
+                     up_dim_size: Optional[int] = None) -> Tensor:
+        # this is identical to how the most up to date version of torch-geometric
+        # implements its aggregate
+        self.up_aggr_module(inputs, agg_up_index, ptr=up_ptr, dim_size=up_dim_size,
+                                dim=self.node_dim)
+    
+    def aggregate_boundary(self, inputs: Tensor, agg_boundary_index: Tensor,
+                       boundary_ptr: Optional[Tensor] = None,
+                       boundary_dim_size: Optional[int] = None) -> Tensor:
+        self.boundaries_aggr_module(inputs, agg_boundary_index, ptr=boundary_ptr, 
+                                dim_size=boundary_dim_size,
+                                dim=self.node_dim)
     
     
 class SparseDeeperCCNConv(torch.nn.Module):
@@ -944,61 +973,19 @@ class SparseDeeperCCNConv(torch.nn.Module):
     (hence why "Sparse")
     """
 
-    # TODO: Refactor the way we pass networks externally to allow for different networks per dim.
     def __init__(self, up_msg_size: int, down_msg_size: int, boundary_msg_size: Optional[int],
-                 passed_msg_up_nn: Optional[Callable], passed_msg_boundaries_nn: Optional[Callable],
-                 passed_update_up_nn: Optional[Callable],
-                 passed_update_boundaries_nn: Optional[Callable],
-                 eps: float = 0., train_eps: bool = False, max_dim: int = 2,
-                 graph_norm=BN, use_coboundaries=False, **kwargs):
-        super(SparseCINConv, self).__init__()
+                 max_dim: int = 2, **kwargs):
+        super(SparseDeeperCCNConv, self).__init__()
         self.max_dim = max_dim
         self.mp_levels = torch.nn.ModuleList()
         for dim in range(max_dim+1):
-            msg_up_nn = passed_msg_up_nn
-            if msg_up_nn is None:
-                if use_coboundaries:
-                    msg_up_nn = Sequential(
-                            Catter(),
-                            Linear(kwargs['layer_dim'] * 2, kwargs['layer_dim']),
-                            kwargs['act_module']())
-                else:
-                    msg_up_nn = lambda xs: xs[0]
-
-            msg_boundaries_nn = passed_msg_boundaries_nn
-            if msg_boundaries_nn is None:
-                msg_boundaries_nn = lambda x: x
-
-            update_up_nn = passed_update_up_nn
-            if update_up_nn is None:
-                update_up_nn = Sequential(
-                    Linear(kwargs['layer_dim'], kwargs['hidden']),
-                    graph_norm(kwargs['hidden']),
-                    kwargs['act_module'](),
-                    Linear(kwargs['hidden'], kwargs['hidden']),
-                    graph_norm(kwargs['hidden']),
-                    kwargs['act_module']()
-                )
-
-            update_boundaries_nn = passed_update_boundaries_nn
-            if update_boundaries_nn is None:
-                update_boundaries_nn = Sequential(
-                    Linear(kwargs['layer_dim'], kwargs['hidden']),
-                    graph_norm(kwargs['hidden']),
-                    kwargs['act_module'](),
-                    Linear(kwargs['hidden'], kwargs['hidden']),
-                    graph_norm(kwargs['hidden']),
-                    kwargs['act_module']()
-                )
-            combine_nn = Sequential(
-                Linear(kwargs['hidden']*2, kwargs['hidden']),
-                graph_norm(kwargs['hidden']),
-                kwargs['act_module']())
-
-            mp = SparseCINCochainConv(dim, up_msg_size, down_msg_size, boundary_msg_size=boundary_msg_size,
-                msg_up_nn=msg_up_nn, msg_boundaries_nn=msg_boundaries_nn, update_up_nn=update_up_nn,
-                update_boundaries_nn=update_boundaries_nn, combine_nn=combine_nn, eps=eps,
-                train_eps=train_eps)
+            mp = SparseDeeperCCNCochainConv(dim=dim, 
+                                            up_msg_size=up_msg_size, 
+                                            down_msg_size=down_msg_size, 
+                                            boundary_msg_size=boundary_msg_size,
+                                            num_layers= 2,
+                                            msg_norm = True,
+                                            learn_msg_scale = True)
             self.mp_levels.append(mp)
 
     def forward(self, *cochain_params: CochainMessagePassingParams, start_to_process=0):
@@ -1012,3 +999,119 @@ class SparseDeeperCCNConv(torch.nn.Module):
                 out.append(self.mp_levels[dim].forward(cochain_params[dim]))
         return out
 
+
+class SparseNormLayer(torch.nn.Module):
+    """Performs normalization (batch norm, layer norm, etc)
+    based on: https://github.com/lightaime/deep_gcns_torch/blob/751382aa2d25e25a2792c133cc99f8cfddae0657/gcn_lib/sparse/torch_nn.py#L23
+    """
+
+    def __init__(self, hidden_sizes: List[int], norm_type: str ='batch', max_dim: int = 2, **kwargs):
+        super(SparseDeeperCCNConv, self).__init__()
+        assert max_dim==len(hidden_sizes), "You must provide the hidden size for each dimension!"
+        self.max_dim = max_dim
+        norm_layers = torch.nn.ModuleList()
+        # append a different norm layer for each dimension
+        for dim in range(len(hidden_sizes)):
+            norm_layer = self.norm_layer(norm_type, hidden_sizes[dim])
+            norm_layers.append(norm_layer)
+
+    def forward(self, *cochain_params: CochainMessagePassingParams, start_to_process=0):
+        assert len(cochain_params) <= self.max_dim+1
+
+        out = []
+        for dim in range(len(cochain_params)):
+            if dim < start_to_process:
+                out.append(cochain_params[dim].x)
+            else:
+                out.append(self.norm_layers[dim](cochain_params[dim].x))
+        return out
+    
+    def norm_layer(norm_type, nc):
+        # normalization layer 1d
+        norm = norm_type.lower()
+        if norm == 'batch' or 'bn':
+            layer = torch.nn.BatchNorm1d(nc, affine=True)
+        elif norm == 'layer':
+            layer = torch.nn.LayerNorm(nc, elementwise_affine=True)
+        elif norm == 'instance':
+            layer = torch.nn.InstanceNorm1d(nc, affine=False)
+        else:
+            raise NotImplementedError('normalization layer [%s] is not found' % norm)
+        return layer
+
+
+class DeeperGCN(torch.nn.Module):
+    def __init__(self, args):
+        super(DeeperGCN, self).__init__()
+
+        self.num_layers = args.num_layers
+        self.dropout = args.dropout
+        self.block = args.block
+
+        hidden_channels = args.hidden_channels
+        num_tasks = args.num_tasks
+        conv = args.conv
+        aggr = args.gcn_aggr
+        t = args.t
+        self.learn_t = args.learn_t
+        p = args.p
+        self.learn_p = args.learn_p
+        y = args.y
+        self.learn_y = args.learn_y
+
+        self.msg_norm = args.msg_norm
+        learn_msg_scale = args.learn_msg_scale
+
+        norm = args.norm
+        mlp_layers = args.mlp_layers
+
+        graph_pooling = args.graph_pooling
+
+        print('The number of layers {}'.format(self.num_layers),
+              'Aggr aggregation method {}'.format(aggr),
+              'block: {}'.format(self.block))
+
+        print('LN/BN->ReLU->GraphConv->Res')
+
+        self.gcns = torch.nn.ModuleList()
+        self.norms = torch.nn.ModuleList()
+
+
+        for layer in range(self.num_layers):
+            gcn = GENConv(hidden_channels, hidden_channels,
+                            aggr=aggr,
+                            t=t, learn_t=self.learn_t,
+                            p=p, learn_p=self.learn_p,
+                            y=y, learn_y=self.learn_p,
+                            msg_norm=self.msg_norm, learn_msg_scale=learn_msg_scale,
+                            encode_edge=self.conv_encode_edge, bond_encoder=True,
+                            norm=norm, mlp_layers=mlp_layers)
+            self.gcns.append(gcn)
+            self.norms.append(norm_layer(norm, hidden_channels))
+
+        self.graph_pred_linear = torch.nn.Linear(hidden_channels, num_tasks)
+
+    def forward(self, input_batch):
+
+        x = input_batch.x
+        edge_index = input_batch.edge_index
+        edge_attr = input_batch.edge_attr
+        batch = input_batch.batch
+
+
+
+        h = self.gcns[0](h, edge_index, edge_emb)
+
+        for layer in range(1, self.num_layers):
+            h1 = self.norms[layer - 1](h)
+            h2 = F.relu(h1)
+            h2 = F.dropout(h2, p=self.dropout, training=self.training)
+
+            h = self.gcns[layer](h2, edge_index, edge_emb) + h
+
+        h = self.norms[self.num_layers - 1](h)
+        h = F.dropout(h, p=self.dropout, training=self.training)
+
+        h_graph = self.pool(h, batch)
+
+        return self.graph_pred_linear(h_graph)

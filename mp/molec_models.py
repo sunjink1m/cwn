@@ -3,7 +3,8 @@ import torch.nn.functional as F
 
 from torch.nn import Linear, Embedding, Sequential, BatchNorm1d as BN
 from torch_geometric.nn import JumpingKnowledge, GINEConv
-from mp.layers import InitReduceConv, EmbedVEWithReduce, OGBEmbedVEWithReduce, SparseCINConv, LessSparseCINConv, DenseCINConv, SparseDeeperCCNConv
+from mp.layers import (InitReduceConv, EmbedVEWithReduce, OGBEmbedVEWithReduce, SparseCINConv, 
+                        LessSparseCINConv, DenseCINConv, SparseDeeperCCNConv, SparseNormLayer)
 from ogb.graphproppred.mol_encoder import AtomEncoder, BondEncoder
 from data.complex import ComplexBatch
 from mp.nn import pool_complex, get_pooling_fn, get_nonlinearity, get_graph_norm
@@ -870,16 +871,17 @@ class EmbedDenseCIN(torch.nn.Module):
         return self.__class__.__name__
 
 
-class EmbedSparseCIN(torch.nn.Module):
+class EmbedSparseDeeperCCN(torch.nn.Module):
     """
-    A cellular version of GIN with some tailoring to nimbly work on molecules from the ZINC database.
+    A cellular version of DyResGEN as detailed in the DeeperGCN paper (https://arxiv.org/abs/2006.07739) 
+    with some tailoring to nimbly work on molecules from the ZINC database.
 
     This model is based on
-    https://github.com/rusty1s/pytorch_geometric/blob/master/benchmark/kernel/gin.py
+    https://github.com/lightaime/deep_gcns_torch/blob/master/examples/ogb/ogbg_mol/model.py
     """
 
     def __init__(self, atom_types, bond_types, out_size, num_layers, hidden,
-                 dropout_rate: float = 0.5, max_dim: int = 2, jump_mode=None, nonlinearity='relu',
+                 dropout_rate: float = 0.1, max_dim: int = 2, jump_mode=None, nonlinearity='relu',
                  readout='sum', train_eps=False, final_hidden_multiplier: int = 2,
                  readout_dims=(0, 1, 2), final_readout='sum', apply_dropout_before='lin2',
                  init_reduce='sum', embed_edge=False, embed_dim=None, use_coboundaries=False,
@@ -892,6 +894,9 @@ class EmbedSparseCIN(torch.nn.Module):
         else:
             self.readout_dims = list(range(max_dim+1))
 
+        assert embed_dim==hidden, "These two need to be same because we need to add them together \
+                                      in order to do residual connections"
+        
         if embed_dim is None:
             embed_dim = hidden
         self.v_embed_init = Embedding(atom_types, embed_dim)
@@ -907,19 +912,18 @@ class EmbedSparseCIN(torch.nn.Module):
         self.apply_dropout_before = apply_dropout_before
         self.jump_mode = jump_mode
         self.convs = torch.nn.ModuleList()
+        self.norms = torch.nn.ModuleList()
         self.nonlinearity = nonlinearity
         self.readout = readout
-        self.graph_norm = get_graph_norm(graph_norm)
-        act_module = get_nonlinearity(nonlinearity, return_module=True)
+        self.num_layers = num_layers
+
         for i in range(num_layers):
             layer_dim = embed_dim if i == 0 else hidden
             self.convs.append(
-                SparseCINConv(up_msg_size=layer_dim, down_msg_size=layer_dim,
-                    boundary_msg_size=layer_dim, passed_msg_boundaries_nn=None,
-                    passed_msg_up_nn=None, passed_update_up_nn=None,
-                    passed_update_boundaries_nn=None, train_eps=train_eps, max_dim=self.max_dim,
-                    hidden=hidden, act_module=act_module, layer_dim=layer_dim,
-                    graph_norm=self.graph_norm, use_coboundaries=use_coboundaries))
+                SparseDeeperCCNConv(up_msg_size=layer_dim, down_msg_size=layer_dim,
+                    boundary_msg_size=layer_dim, max_dim=self.max_dim))
+            self.norms.append(SparseNormLayer(hidden_sizes=[layer_dim]*(max_dim+1)),
+                                                norm_type=graph_norm, max_dim=self.max_dim)
         self.jump = JumpingKnowledge(jump_mode) if jump_mode is not None else None
         self.lin1s = torch.nn.ModuleList()
         for _ in range(max_dim + 1):
@@ -961,17 +965,38 @@ class EmbedSparseCIN(torch.nn.Module):
         # Embed and populate higher-levels
         params = data.get_all_cochain_params(max_dim=self.max_dim, include_down_features=False)
         xs = list(self.init_conv(*params))
-
-        # Apply dropout on the input features like all models do on ZINC.
-        for i, x in enumerate(xs):
-            xs[i] = F.dropout(xs[i], p=self.dropout_rate, training=self.training)
-
         data.set_xs(xs)
 
-        for c, conv in enumerate(self.convs):
+        # the first convolution is done without res connection
+        params = data.get_all_cochain_params(max_dim=self.max_dim, include_down_features=False)
+        start_to_process = 0
+        xs = self.convs[c][0](*params, start_to_process=start_to_process)
+        data.set_xs(xs)
+
+        if include_partial:
+            for k in range(len(xs)):
+                res[f"layer{0}_{k}"] = xs[k]
+
+        if self.jump_mode is not None:
+            if jump_xs is None:
+                jump_xs = [[] for _ in xs]
+            for i, x in enumerate(xs):
+                jump_xs[i] += [x]
+
+        for c in range(1, self.num_layers):
+            # normalization layer
             params = data.get_all_cochain_params(max_dim=self.max_dim, include_down_features=False)
-            start_to_process = 0
-            xs = conv(*params, start_to_process=start_to_process)
+            xs = self.norms[c-1](*params, start_to_process=0)
+            # relu
+            xs = [F.relu(x) for x in xs]
+            # dropout
+            xs = [F.dropout(x, p=self.dropout_rate, training=self.training) for x in xs]
+            data.set_xs(xs)
+            # convolution
+            params = data.get_all_cochain_params(max_dim=self.max_dim, include_down_features=False)
+            xs = self.convs[c](*params, start_to_process=0)
+            # addition (residual connection) (x_new = x_old + output_from_convolution) for each dimension
+            xs = [params[i].x+xs[i] for dim in range(len(xs))]
             data.set_xs(xs)
 
             if include_partial:
@@ -983,6 +1008,12 @@ class EmbedSparseCIN(torch.nn.Module):
                     jump_xs = [[] for _ in xs]
                 for i, x in enumerate(xs):
                     jump_xs[i] += [x]
+
+        # final normalization and dropout
+        params = data.get_all_cochain_params(max_dim=self.max_dim, include_down_features=False)
+        xs = self.norms[-1](*params, start_to_process=0)
+        xs = [F.dropout(x, p=self.dropout_rate, training=self.training) for x in xs]
+        data.set_xs(xs)
 
         if self.jump_mode is not None:
             xs = self.jump_complex(jump_xs)

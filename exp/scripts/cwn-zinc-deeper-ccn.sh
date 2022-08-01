@@ -9,17 +9,17 @@ python -m exp.run_mol_exp \
   --train_eval_period 20 \
   --epochs 1000 \
   --batch_size 128 \
-  --drop_rate 0.0 \
+  --drop_rate 0.1 \
   --drop_position lin2 \
-  --emb_dim 128 \
+  --emb_dim 80 \
   --max_dim 2 \
   --final_readout sum \
   --init_method sum \
-  --lr 0.001 \
+  --lr 0.005 \
   --graph_norm bn \
-  --model embed_sparse_cin \
+  --model embed_sparse_deeper_ccn \
   --nonlinearity relu \
-  --num_layers 4 \
+  --num_layers 7 \
   --readout sum \
   --max_ring_size 18 \
   --task_type regression \
