@@ -888,7 +888,7 @@ class SparseDeeperCCNCochainConv(CochainMessagePassing):
                  num_layers: int = 2,
                  msg_norm: bool = True,
                  learn_msg_scale: bool = True):
-        super(SparseCINCochainConv, self).__init__(up_msg_size, down_msg_size, 
+        super(SparseDeeperCCNCochainConv, self).__init__(up_msg_size, down_msg_size, 
                                                  boundary_msg_size=boundary_msg_size,
                                                  use_down_msg=False)
         self.dim = dim
@@ -924,8 +924,8 @@ class SparseDeeperCCNCochainConv(CochainMessagePassing):
         # message normalization, as seen in DeeperGCN
         if self.msg_norm:
             # TODO: review whether we should normalize up & bound outputs seperately or together
-            out_up = self.msg_norm(original_x, out_up)
-            out_boundaries = self.msg_norm(original_x, out_boundaries)
+            out_up = self.up_msg_norm(original_x, out_up)
+            out_boundaries = self.boundaries_msg_norm(original_x, out_boundaries)
 
         # residual connections, as seen in DeeperGCN
         # TODO: review whether we really should just be adding all this together:
