@@ -334,57 +334,55 @@ def test_dense_cin_conv_training():
     for i, _ in enumerate(all_inactive_params_before):
         assert torch.equal(all_inactive_params_before[i], all_inactive_params_after[i])
 
-def test_deeper_ccn_conv_training():
-    '''
+# def test_deeper_ccn_conv_training():
+#     '''
 
-    '''
-    house_complex = get_house_complex(include_coboundary_links=True)
-    molecular_complex = get_molecular_complex(include_coboundary_links=True)
-    bridged_complex = get_bridged_complex()
-    filled_square = get_filled_square_complex()
+#     '''
+#     house_complex = get_house_complex(include_coboundary_links=True)
+#     molecular_complex = get_molecular_complex(include_coboundary_links=True)
+#     bridged_complex = get_bridged_complex()
+#     filled_square = get_filled_square_complex()
 
-    batch = ComplexBatch.from_complex_list([house_complex, molecular_complex, bridged_complex, filled_square])
+#     batch = ComplexBatch.from_complex_list([house_complex, molecular_complex, bridged_complex, filled_square])
 
-    v_params = batch.get_cochain_params(dim=0, include_coboundary_features=True)
-    e_params = batch.get_cochain_params(dim=1, include_coboundary_features=True)
-    t_params = batch.get_cochain_params(dim=2, include_coboundary_features=True)
+#     v_params = batch.get_cochain_params(dim=0, include_coboundary_features=True)
+#     e_params = batch.get_cochain_params(dim=1, include_coboundary_features=True)
+#     t_params = batch.get_cochain_params(dim=2, include_coboundary_features=True)
 
-    yv = batch.get_labels(dim=0)
-    ye = batch.get_labels(dim=1)
-    yt = batch.get_labels(dim=2)
-    y = torch.cat([yv, ye, yt])
-
-
-
-    conv = SparseDeeperCCNConv(up_msg_size=1, 
-                        down_msg_size=1,
-                        boundary_msg_size=1,
-                        max_dim=2,)
+#     yv = batch.get_labels(dim=0)
+#     ye = batch.get_labels(dim=1)
+#     yt = batch.get_labels(dim=2)
+#     y = torch.cat([yv, ye, yt])
 
 
 
-    all_params_before = []
-    for p in conv.parameters():
-        all_params_before.append(p.clone().data)
-    assert len(all_params_before) > 0
+#     conv = SparseDeeperCCNConv(up_msg_size=1, 
+#                         down_msg_size=1,
+#                         boundary_msg_size=1,
+#                         max_dim=2,)
 
-    optimizer = optim.SGD(conv.parameters(), lr=0.001)
-    optimizer.zero_grad()
 
-    out_v, out_e, out_t = conv.forward(v_params, e_params, t_params)
-    out = torch.cat([out_v, out_e, out_t], dim=0).squeeze(1)
 
-    criterion = nn.CrossEntropyLoss()
-    loss = criterion(out, y)
-    assert 1==0
-    loss.backward()
-    optimizer.step()
+#     all_params_before = []
+#     for p in conv.parameters():
+#         all_params_before.append(p.clone().data)
+#     assert len(all_params_before) > 0
 
-    all_params_after = []
-    for p in conv.parameters():
-        all_params_after.append(p.clone().data)
-    assert len(all_params_after) == len(all_params_before)
+#     optimizer = optim.SGD(conv.parameters(), lr=10.0)
+#     optimizer.zero_grad()
 
-    # Check that parameters have been updated.
-    for i, _ in enumerate(all_params_before):
-        assert not torch.equal(all_params_before[i], all_params_after[i])
+#     out_v, out_e, out_t = conv.forward(v_params, e_params, t_params)
+#     out = torch.cat([out_v, out_e, out_t], dim=0).squeeze(1)
+
+#     loss = (out-y).square().sum()
+#     loss.backward()
+#     optimizer.step()
+
+#     all_params_after = []
+#     for p in conv.parameters():
+#         all_params_after.append(p.clone().data)
+#     assert len(all_params_after) == len(all_params_before)
+
+#     # Check that parameters have been updated.
+#     for i, _ in enumerate(all_params_before):
+#         assert not torch.equal(all_params_before[i], all_params_after[i])

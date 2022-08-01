@@ -4,7 +4,8 @@ import pytest
 
 from data.complex import ComplexBatch
 from data.dummy_complexes import get_testing_complex_list
-from mp.molec_models import EmbedSparseCIN, EmbedLessSparseCIN, OGBEmbedSparseCIN, EmbedSparseCINNoRings, EmbedGIN, EmbedDenseCIN
+from mp.molec_models import (EmbedSparseCIN, EmbedLessSparseCIN, OGBEmbedSparseCIN, EmbedSparseCINNoRings, 
+                            EmbedGIN, EmbedDenseCIN, EmbedSparseDeeperCCN)
 from data.data_loading import DataLoader, load_dataset
 
 
@@ -526,6 +527,75 @@ def test_dense_cin_model_with_batching_on_zinc():
                         embed_dim=5, 
                         use_coboundaries=True,
                         use_boundaries=True,
+                        graph_norm='bn')
+    model.eval()
+
+    batched_res = {}
+    for batch in data_loader:
+        batched_pred, res = model.forward(batch, include_partial=True)
+        for key in res:
+            if key not in batched_res:
+                batched_res[key] = []
+            batched_res[key].append(res[key])
+
+    for key in batched_res:
+        batched_res[key] = torch.cat(batched_res[key], dim=0)
+
+    unbatched_res = {}
+    for complex in dataset:
+        # print(f"Complex dim {complex.dimension}")
+        pred, res = model.forward(ComplexBatch.from_complex_list([complex], max_dim=max_dim),
+            include_partial=True)
+        for key in res:
+            if key not in unbatched_res:
+                unbatched_res[key] = []
+            unbatched_res[key].append(res[key])
+
+    for key in unbatched_res:
+        unbatched_res[key] = torch.cat(unbatched_res[key], dim=0)
+
+    for key in set(list(unbatched_res.keys()) + list(batched_res.keys())):
+        assert torch.allclose(unbatched_res[key], batched_res[key], atol=1e-6), (
+            print(key, torch.max(torch.abs(unbatched_res[key] - batched_res[key]))))
+
+
+@pytest.mark.data
+def test_sparse_deeper_ccn_model_with_batching_on_zinc():
+    """Check this runs without errors and that batching and no batching produce the same output."""
+    dataset = load_dataset('ZINC',
+                            max_dim=2,
+                            init_method='sum', 
+                            emb_dim=25,
+                            max_ring_size=18,
+                            use_edge_features=True,
+                            n_jobs=16,
+                            include_down_adj=True,
+                            include_coboundary_links=True)
+    # assert len(dataset) == 1113
+    split_idx = dataset.get_idx_split()
+    dataset = dataset[split_idx['valid']]
+    # assert len(dataset) == 111
+
+    max_dim = 2
+    torch.manual_seed(0)
+    data_loader = DataLoader(dataset, batch_size=32, max_dim=2)
+    model = EmbedSparseDeeperCCN(dataset.num_node_type, 
+                        dataset.num_edge_type,
+                        dataset.num_classes,
+                        num_layers=3, hidden=5,
+                        dropout_rate=0.5, 
+                        max_dim=2, 
+                        jump_mode=None, 
+                        nonlinearity='sigmoid',
+                        readout='sum', 
+                        train_eps=False, 
+                        readout_dims=(0, 1, 2), 
+                        final_readout='sum', 
+                        apply_dropout_before='lin2',
+                        init_reduce='sum', 
+                        embed_edge=True, 
+                        embed_dim=5, 
+                        use_coboundaries=True,
                         graph_norm='bn')
     model.eval()
 
