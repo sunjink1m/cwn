@@ -285,7 +285,6 @@ def main(args):
                                final_readout=args.final_readout,  # final readout
                                apply_dropout_before=args.drop_position,  # where to apply dropout
                                use_coboundaries=use_coboundaries,
-                               use_boundaries=use_boundaries,
                                embed_edge=args.use_edge_features,
                                graph_norm=args.graph_norm,  # normalization layer
                                readout_dims=readout_dims  # readout_dims
