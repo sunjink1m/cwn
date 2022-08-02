@@ -8,7 +8,7 @@ from data.helper_test import compare_complexes, compare_complexes_without_2feats
 from definitions import ROOT_DIR
 
     
-def validate_data_retrieval(dataset, graph_list, exp_dim, include_down_adj, ring_size=None):
+def validate_data_retrieval(dataset, graph_list, exp_dim, include_down_adj, include_coboundary_links=False, ring_size=None):
     
     assert len(dataset) == len(graph_list)
     for i in range(len(graph_list)):
@@ -18,12 +18,14 @@ def validate_data_retrieval(dataset, graph_list, exp_dim, include_down_adj, ring
             expected = compute_ring_2complex(graph.x, graph.edge_index, None,
                                              graph.num_nodes, y=graph.y,
                                              max_k=ring_size, include_down_adj=include_down_adj,
+                                             include_coboundary_links=include_coboundary_links,
                                              init_rings=True)
         else:
             expected = compute_clique_complex_with_gudhi(graph.x, graph.edge_index,
                                                      graph.num_nodes, expansion_dim=exp_dim,
-                                                     y=graph.y, include_down_adj=include_down_adj)
-        compare_complexes(yielded, expected, include_down_adj)
+                                                     y=graph.y, include_down_adj=include_down_adj,
+                                                     include_coboundary_links=include_coboundary_links)
+        compare_complexes(yielded, expected, include_down_adj, include_coboundary_links=include_coboundary_links)
         
 
 @pytest.mark.data
@@ -50,7 +52,23 @@ def test_data_retrieval_on_proteins_with_rings():
     # Reducing to val_ids only, to save some time. Uncomment the lines below to test on the whole set
     # validate_data_retrieval(dataset, graph_list, 2, True,  6)
     # validate_data_retrieval(dataset[train_ids], [graph_list[i] for i in train_ids], 2, True, 6)
-    validate_data_retrieval(dataset[val_ids], [graph_list[i] for i in val_ids], 2, True, 6)
+    validate_data_retrieval(dataset[val_ids], [graph_list[i] for i in val_ids], 2, True, ring_size=6)
+
+
+@pytest.mark.data
+def test_data_retrieval_on_proteins_with_rings_with_coboundary_links():
+    dataset = TUDataset(os.path.join(ROOT_DIR, 'datasets', 'PROTEINS'), 'PROTEINS', max_dim=2,
+                        num_classes=2, fold=0, degree_as_tag=False, init_method='sum', include_down_adj=True,
+                        include_coboundary_links=True,
+                        max_ring_size=6)
+    graph_list, train_ids, val_ids, _, num_classes = load_graph_dataset('PROTEINS', fold=0)
+    assert dataset.include_coboundary_links
+    assert dataset.num_classes == num_classes
+    # Reducing to val_ids only, to save some time. Uncomment the lines below to test on the whole set
+    # validate_data_retrieval(dataset, graph_list, 2, True,  6)
+    # validate_data_retrieval(dataset[train_ids], [graph_list[i] for i in train_ids], 2, True, 6)
+    validate_data_retrieval(dataset[val_ids], [graph_list[i] for i in val_ids], 2, True, 
+                            include_coboundary_links=True, ring_size=6)
     
 
 def test_dummy_dataset_data_retrieval():
