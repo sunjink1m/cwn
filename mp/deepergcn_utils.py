@@ -18,8 +18,13 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE."""
 
-# Code copied from torch-geometric, since the version of torch-geometric we use
-# in this repository has not yet implemented these aggregators.
+
+# Code copied from the most recent version of torch-geometric to use in the 
+# implementation of DeeperCCN and related models.
+# 
+# When the version of torch-geometric used in this repository is updated to 
+# the latest version, this file can be deleted and we can import these
+# classes from torch-geomtric.
 
 
 from typing import Optional, Tuple, List
