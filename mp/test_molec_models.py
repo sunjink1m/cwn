@@ -346,16 +346,9 @@ def test_zinc_less_sparse_cin0_model_with_batching():
 
 
 @pytest.mark.data
-def test_zinc_less_sparse_cin0_model_with_batching_on_zinc():
+def test_zinc_less_sparse_cin0_model_with_batching_on_proteins():
     """Check this runs without errors and that batching and no batching produce the same output."""
-    # dataset = load_dataset('PROTEINS', max_dim=2, fold=0, init_method='mean')
-    dataset = load_dataset('ZINC',
-                        max_dim=2,
-                        init_method='sum', 
-                        emb_dim=25,
-                        max_ring_size=18,
-                        use_edge_features=True,
-                        n_jobs=16,
+    dataset = load_dataset('PROTEINS', max_dim=2, fold=0, init_method='mean',
                         include_down_adj=True,
                         include_coboundary_links=True)
     split_idx = dataset.get_idx_split()
@@ -406,7 +399,7 @@ def test_zinc_less_sparse_cin0_model_with_batching_on_zinc():
         unbatched_res[key] = torch.cat(unbatched_res[key], dim=0)
 
     for key in set(list(unbatched_res.keys()) + list(batched_res.keys())):
-        assert torch.allclose(unbatched_res[key], batched_res[key], atol=1e-6), (
+        assert torch.allclose(unbatched_res[key], batched_res[key], atol=1e-5), (
                 print(key, torch.max(torch.abs(unbatched_res[key] - batched_res[key]))))
 
 
@@ -490,17 +483,11 @@ def test_zinc_dense_cin0_model_with_batching():
 
 
 @pytest.mark.data
-def test_dense_cin_model_with_batching_on_zinc():
+def test_dense_cin_model_with_batching_on_proteins():
     """Check this runs without errors and that batching and no batching produce the same output."""
-    dataset = load_dataset('ZINC',
-                            max_dim=2,
-                            init_method='sum', 
-                            emb_dim=25,
-                            max_ring_size=18,
-                            use_edge_features=True,
-                            n_jobs=16,
-                            include_down_adj=True,
-                            include_coboundary_links=True)
+    dataset = load_dataset('PROTEINS', max_dim=2, fold=0, init_method='mean',
+                        include_down_adj=True,
+                        include_coboundary_links=True)
     # assert len(dataset) == 1113
     split_idx = dataset.get_idx_split()
     dataset = dataset[split_idx['valid']]
@@ -509,9 +496,7 @@ def test_dense_cin_model_with_batching_on_zinc():
     max_dim = 2
     torch.manual_seed(0)
     data_loader = DataLoader(dataset, batch_size=32, max_dim=2)
-    model = EmbedDenseCIN(dataset.num_node_type, 
-                        dataset.num_edge_type,
-                        dataset.num_classes,
+    model = EmbedDenseCIN(atom_types=64, bond_types=4, out_size=3,
                         num_layers=3, hidden=5,
                         dropout_rate=0.5, 
                         max_dim=2, 
@@ -532,6 +517,13 @@ def test_dense_cin_model_with_batching_on_zinc():
 
     batched_res = {}
     for batch in data_loader:
+        # Simulate no edge and two_cell features to test init layer
+        batch.cochains[1].x = None
+        if len(batch.cochains) == 3:
+            batch.cochains[2].x = None
+        # ZincSparseCIN assumes features are unidimensional like in ZINC
+        batch.cochains[0].x = batch.cochains[0].x[:, :1]
+        
         batched_pred, res = model.forward(batch, include_partial=True)
         for key in res:
             if key not in batched_res:
@@ -543,9 +535,16 @@ def test_dense_cin_model_with_batching_on_zinc():
 
     unbatched_res = {}
     for complex in dataset:
-        # print(f"Complex dim {complex.dimension}")
-        pred, res = model.forward(ComplexBatch.from_complex_list([complex], max_dim=max_dim),
-            include_partial=True)
+        batch = ComplexBatch.from_complex_list([complex], max_dim=max_dim)
+        # Simulate no edge and two_cell features to test init layer
+        batch.cochains[1].x = None
+        if len(batch.cochains) == 3:
+            batch.cochains[2].x = None
+        # ZincSparseCIN assumes features are unidimensional like in ZINC
+        batch.cochains[0].x = batch.cochains[0].x[:, :1]
+
+        pred, res = model.forward(batch, include_partial=True)
+
         for key in res:
             if key not in unbatched_res:
                 unbatched_res[key] = []
@@ -560,17 +559,11 @@ def test_dense_cin_model_with_batching_on_zinc():
 
 
 @pytest.mark.data
-def test_sparse_deeper_ccn_model_with_batching_on_zinc():
+def test_sparse_deeper_ccn_model_with_batching_on_proteins():
     """Check this runs without errors and that batching and no batching produce the same output."""
-    dataset = load_dataset('ZINC',
-                            max_dim=2,
-                            init_method='sum', 
-                            emb_dim=25,
-                            max_ring_size=18,
-                            use_edge_features=True,
-                            n_jobs=16,
-                            include_down_adj=True,
-                            include_coboundary_links=True)
+    dataset = load_dataset('PROTEINS', max_dim=2, fold=0, init_method='mean',
+                        include_down_adj=True,
+                        include_coboundary_links=True)
     # assert len(dataset) == 1113
     split_idx = dataset.get_idx_split()
     dataset = dataset[split_idx['valid']]
@@ -579,9 +572,7 @@ def test_sparse_deeper_ccn_model_with_batching_on_zinc():
     max_dim = 2
     torch.manual_seed(0)
     data_loader = DataLoader(dataset, batch_size=32, max_dim=2)
-    model = EmbedSparseDeeperCCN(dataset.num_node_type, 
-                        dataset.num_edge_type,
-                        dataset.num_classes,
+    model = EmbedSparseDeeperCCN(atom_types=64, bond_types=4, out_size=3,
                         num_layers=3, hidden=5,
                         dropout_rate=0.5, 
                         max_dim=2, 
@@ -601,6 +592,13 @@ def test_sparse_deeper_ccn_model_with_batching_on_zinc():
 
     batched_res = {}
     for batch in data_loader:
+        # Simulate no edge and two_cell features to test init layer
+        batch.cochains[1].x = None
+        if len(batch.cochains) == 3:
+            batch.cochains[2].x = None
+        # ZincSparseCIN assumes features are unidimensional like in ZINC
+        batch.cochains[0].x = batch.cochains[0].x[:, :1]
+        
         batched_pred, res = model.forward(batch, include_partial=True)
         for key in res:
             if key not in batched_res:
@@ -612,9 +610,16 @@ def test_sparse_deeper_ccn_model_with_batching_on_zinc():
 
     unbatched_res = {}
     for complex in dataset:
-        # print(f"Complex dim {complex.dimension}")
-        pred, res = model.forward(ComplexBatch.from_complex_list([complex], max_dim=max_dim),
-            include_partial=True)
+        batch = ComplexBatch.from_complex_list([complex], max_dim=max_dim)
+        # Simulate no edge and two_cell features to test init layer
+        batch.cochains[1].x = None
+        if len(batch.cochains) == 3:
+            batch.cochains[2].x = None
+        # ZincSparseCIN assumes features are unidimensional like in ZINC
+        batch.cochains[0].x = batch.cochains[0].x[:, :1]
+
+        pred, res = model.forward(batch, include_partial=True)
+
         for key in res:
             if key not in unbatched_res:
                 unbatched_res[key] = []
