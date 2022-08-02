@@ -193,7 +193,6 @@ def generate_cochain(dim, x, all_upper_index, all_lower_index,
                       if len(all_shared_coboundaries[dim]) > 0 else None)
     shared_boundaries = (torch.tensor(all_shared_boundaries[dim], dtype=torch.long)
                     if len(all_shared_boundaries[dim]) > 0 else None)
-    
     boundary_index = None
     if len(boundaries_tables[dim]) > 0:
         boundary_index = [list(), list()]
@@ -205,15 +204,16 @@ def generate_cochain(dim, x, all_upper_index, all_lower_index,
 
     coboundary_index = None
     if include_coboundary_links:
-        assert id_maps is not None
-        if len(co_boundaries[dim]) > 0:
-            coboundary_index = [list(), list()]
-            cell_to_cobounds_dict = co_boundaries[dim]
-            for cell, cobounds in cell_to_cobounds_dict.items():
-                for cobound in cobounds:
-                    coboundary_index[0].append(id_maps[dim+1][cobound])
-                    coboundary_index[1].append(id_maps[dim][cell])
-            coboundary_index = torch.LongTensor(coboundary_index)
+        # The coboundary index is just the boundary index of the directly
+        # above dimension with the first and second rows swapped!
+        if dim+1 < len(boundaries_tables): # avoid IndexError on next line
+            if len(boundaries_tables[dim+1]) > 0:
+                coboundary_index = [list(), list()]
+                for s, cell in enumerate(boundaries_tables[dim+1]):
+                    for boundary in cell:
+                        coboundary_index[1].append(boundary)
+                        coboundary_index[0].append(s)
+                coboundary_index = torch.LongTensor(coboundary_index)
 
     if num_cells_down is None:
         assert shared_boundaries is None
@@ -237,6 +237,7 @@ def generate_cochain(dim, x, all_upper_index, all_lower_index,
 def compute_clique_complex_with_gudhi(x: Tensor, edge_index: Adj, size: int,
                                       expansion_dim: int = 2, y: Tensor = None,
                                       include_down_adj=True,
+                                      include_coboundary_links=False,
                                       init_method: str = 'sum') -> Complex:
     """Generates a clique complex of a pyG graph via gudhi.
 
@@ -279,13 +280,15 @@ def compute_clique_complex_with_gudhi(x: Tensor, edge_index: Adj, size: int,
     for i in range(complex_dim+1):
         y = v_y if i == 0 else None
         cochain = generate_cochain(i, xs[i], upper_idx, lower_idx, shared_boundaries, shared_coboundaries,
-                               simplex_tables, boundaries_tables, complex_dim=complex_dim, y=y)
+                               simplex_tables, boundaries_tables, complex_dim=complex_dim, y=y, 
+                               include_coboundary_links=include_coboundary_links)
         cochains.append(cochain)
 
     return Complex(*cochains, y=complex_y, dimension=complex_dim)
 
 
 def convert_graph_dataset_with_gudhi(dataset, expansion_dim: int, include_down_adj=True,
+                                     include_coboundary_links=False,
                                      init_method: str = 'sum'):
     # TODO(Cris): Add parallelism to this code like in the cell complex conversion code.
     dimension = -1
@@ -295,6 +298,7 @@ def convert_graph_dataset_with_gudhi(dataset, expansion_dim: int, include_down_a
     for data in tqdm(dataset):
         complex = compute_clique_complex_with_gudhi(data.x, data.edge_index, data.num_nodes,
             expansion_dim=expansion_dim, y=data.y, include_down_adj=include_down_adj,
+            include_coboundary_links=include_coboundary_links,
             init_method=init_method)
         if complex.dimension > dimension:
             dimension = complex.dimension
