@@ -911,6 +911,13 @@ class SparseDeeperCCNCochainConv(CochainMessagePassing):
         self.boundaries_msg_norm = MessageNorm(learn_msg_scale) if msg_norm else None
 
         self.eps = 1e-7
+
+        self.concat_nn = Sequential(
+                    Linear(up_msg_size*2, up_msg_size),
+                    torch.nn.BatchNorm1d(up_msg_size),
+                    torch.nn.ReLU(),
+                )
+
         self.reset_parameters()
 
     def forward(self, cochain: CochainMessagePassingParams):
@@ -930,7 +937,7 @@ class SparseDeeperCCNCochainConv(CochainMessagePassing):
         # residual connections, as seen in DeeperGCN
         # TODO: review whether we really should just be adding all this together:
         # It seems we are treating out_up and out_bound equally; i think that might lose information
-        out = original_x + out_up + out_boundaries
+        out = original_x + self.concat_nn(torch.cat([out_up,out_boundaries], dim=-1))
 
         # mlp
         return self.mlp(out)
@@ -938,6 +945,7 @@ class SparseDeeperCCNCochainConv(CochainMessagePassing):
     def reset_parameters(self):
         reset(self.up_aggr_module)
         reset(self.boundaries_aggr_module)
+        reset(self.concat_nn)
         if self.msg_norm:
             self.up_msg_norm.reset_parameters()
             self.boundaries_msg_norm.reset_parameters()

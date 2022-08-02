@@ -4,14 +4,14 @@ python -m exp.run_mol_exp \
   --device 0 \
   --start_seed 0 \
   --stop_seed 9 \
-  --exp_name cwn-zinc \
+  --exp_name cwn-zinc-deeper-ccn \
   --dataset ZINC \
   --train_eval_period 20 \
   --epochs 1000 \
   --batch_size 128 \
   --drop_rate 0.1 \
   --drop_position lin2 \
-  --emb_dim 73 \
+  --emb_dim 67 \
   --max_dim 2 \
   --final_readout sum \
   --init_method sum \
