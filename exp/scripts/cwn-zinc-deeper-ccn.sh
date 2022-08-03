@@ -15,7 +15,7 @@ python -m exp.run_mol_exp \
   --max_dim 2 \
   --final_readout sum \
   --init_method sum \
-  --lr 0.005 \
+  --lr 0.0005 \
   --graph_norm bn \
   --model embed_sparse_deeper_ccn \
   --nonlinearity relu \
