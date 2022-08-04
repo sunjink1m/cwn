@@ -152,69 +152,6 @@ class EdgeCINConv(torch.nn.Module):
         return out
 
 
-class SparseCINCochainConv(CochainMessagePassing):
-    """This is a CIN Cochain layer that operates of boundaries and upper adjacent cells."""
-    def __init__(self, dim: int,
-                 up_msg_size: int,
-                 down_msg_size: int,
-                 boundary_msg_size: Optional[int],
-                 msg_up_nn: Callable,
-                 msg_boundaries_nn: Callable,
-                 update_up_nn: Callable,
-                 update_boundaries_nn: Callable,
-                 combine_nn: Callable,
-                 eps: float = 0.,
-                 train_eps: bool = False):
-        super(SparseCINCochainConv, self).__init__(up_msg_size, down_msg_size, boundary_msg_size=boundary_msg_size,
-                                                 use_down_msg=False)
-        self.dim = dim
-        self.msg_up_nn = msg_up_nn
-        self.msg_boundaries_nn = msg_boundaries_nn
-        self.update_up_nn = update_up_nn
-        self.update_boundaries_nn = update_boundaries_nn
-        self.combine_nn = combine_nn
-        self.initial_eps = eps
-        if train_eps:
-            self.eps1 = torch.nn.Parameter(torch.Tensor([eps])) # for upper adjacencies
-            self.eps2 = torch.nn.Parameter(torch.Tensor([eps])) # for boundaries
-        else:
-            self.register_buffer('eps1', torch.Tensor([eps]))
-            self.register_buffer('eps2', torch.Tensor([eps]))
-        self.reset_parameters()
-
-    def forward(self, cochain: CochainMessagePassingParams):
-        out_up, _, out_boundaries, _ = self.propagate(cochain.up_index, cochain.down_index,
-                                              cochain.boundary_index, None, x=cochain.x,
-                                              up_attr=cochain.kwargs['up_attr'],
-                                              boundary_attr=cochain.kwargs['boundary_attr'])
-
-        # As in GIN, we can learn an injective update function for each multi-set
-        out_up += (1 + self.eps1) * cochain.x
-        out_boundaries += (1 + self.eps2) * cochain.x
-        out_up = self.update_up_nn(out_up)
-        out_boundaries = self.update_boundaries_nn(out_boundaries)
-
-        # We need to combine the two such that the output is injective
-        # Because the cross product of countable spaces is countable, then such a function exists.
-        # And we can learn it with another MLP.
-        return self.combine_nn(torch.cat([out_up, out_boundaries], dim=-1))
-
-    def reset_parameters(self):
-        reset(self.msg_up_nn)
-        reset(self.msg_boundaries_nn)
-        reset(self.update_up_nn)
-        reset(self.update_boundaries_nn)
-        reset(self.combine_nn)
-        self.eps1.data.fill_(self.initial_eps)
-        self.eps2.data.fill_(self.initial_eps)
-
-    def message_up(self, up_x_j: Tensor, up_attr: Tensor) -> Tensor:
-        return self.msg_up_nn((up_x_j, up_attr))
-    
-    def message_boundary(self, boundary_x_j: Tensor) -> Tensor:
-        return self.msg_boundaries_nn(boundary_x_j)
-    
-
 class Catter(torch.nn.Module):
     def __init__(self):
         super(Catter, self).__init__()
@@ -280,10 +217,10 @@ class SparseCINConv(torch.nn.Module):
                 graph_norm(kwargs['hidden']),
                 kwargs['act_module']())
 
-            mp = SparseCINCochainConv(dim, up_msg_size, down_msg_size, boundary_msg_size=boundary_msg_size,
+            mp = DenseCINCochainConv(dim, up_msg_size, down_msg_size, boundary_msg_size=boundary_msg_size,
                 msg_up_nn=msg_up_nn, msg_boundaries_nn=msg_boundaries_nn, update_up_nn=update_up_nn,
                 update_boundaries_nn=update_boundaries_nn, combine_nn=combine_nn, eps=eps,
-                train_eps=train_eps)
+                train_eps=train_eps, variant='sparse')
             self.mp_levels.append(mp)
 
     def forward(self, *cochain_params: CochainMessagePassingParams, start_to_process=0):
@@ -464,88 +401,6 @@ class OGBEmbedVEWithReduce(AbstractEmbedVEWithReduce):
         return e_params.x.to(dtype=torch.long)
 
 
-class LessSparseCINCochainConv(CochainMessagePassing):
-    """This is a CIN Cochain layer that operates of boundaries, upper adjacent cells,
-    and lower adjacent cells.
-    
-    Based on SparseCINCochainConv
-    """
-    def __init__(self, dim: int,
-                 up_msg_size: int,
-                 down_msg_size: int,
-                 boundary_msg_size: Optional[int],
-                 msg_up_nn: Callable,
-                 msg_down_nn: Callable,
-                 msg_boundaries_nn: Callable,
-                 update_up_nn: Callable,
-                 update_down_nn: Callable,
-                 update_boundaries_nn: Callable,
-                 combine_nn: Callable,
-                 eps: float = 0.,
-                 train_eps: bool = False):
-        super(LessSparseCINCochainConv, self).__init__(up_msg_size, down_msg_size, boundary_msg_size=boundary_msg_size,
-                                                 use_down_msg=True)
-        self.dim = dim
-        self.msg_up_nn = msg_up_nn
-        self.msg_down_nn = msg_down_nn
-        self.msg_boundaries_nn = msg_boundaries_nn
-        self.update_up_nn = update_up_nn
-        self.update_down_nn = update_down_nn
-        self.update_boundaries_nn = update_boundaries_nn
-        self.combine_nn = combine_nn
-        self.initial_eps = eps
-        if train_eps:
-            self.eps1 = torch.nn.Parameter(torch.Tensor([eps])) # for upper adjacencies
-            self.eps2 = torch.nn.Parameter(torch.Tensor([eps])) # for boundaries
-            self.eps3 = torch.nn.Parameter(torch.Tensor([eps])) # for lower adjacencies
-        else:
-            self.register_buffer('eps1', torch.Tensor([eps]))
-            self.register_buffer('eps2', torch.Tensor([eps]))
-            self.register_buffer('eps3', torch.Tensor([eps]))
-        self.reset_parameters()
-
-    def forward(self, cochain: CochainMessagePassingParams):
-        out_up, out_down, out_boundaries, _ = self.propagate(cochain.up_index, cochain.down_index,
-                                              cochain.boundary_index, None, x=cochain.x,
-                                              up_attr=cochain.kwargs['up_attr'],
-                                              down_attr=cochain.kwargs['down_attr'],
-                                              boundary_attr=cochain.kwargs['boundary_attr'])
-
-        # As in GIN, we can learn an injective update function for each multi-set
-        out_up += (1 + self.eps1) * cochain.x
-        out_down += (1 + self.eps3) * cochain.x
-        out_boundaries += (1 + self.eps2) * cochain.x
-        out_up = self.update_up_nn(out_up)
-        out_down = self.update_down_nn(out_down)
-        out_boundaries = self.update_boundaries_nn(out_boundaries)
-
-        # We need to combine the two such that the output is injective
-        # Because the cross product of countable spaces is countable, then such a function exists.
-        # And we can learn it with another MLP.
-        return self.combine_nn(torch.cat([out_up, out_down, out_boundaries], dim=-1))
-
-    def reset_parameters(self):
-        reset(self.msg_up_nn)
-        reset(self.msg_down_nn)
-        reset(self.msg_boundaries_nn)
-        reset(self.update_up_nn)
-        reset(self.update_down_nn)
-        reset(self.update_boundaries_nn)
-        reset(self.combine_nn)
-        self.eps1.data.fill_(self.initial_eps)
-        self.eps2.data.fill_(self.initial_eps)
-        self.eps3.data.fill_(self.initial_eps)
-
-    def message_up(self, up_x_j: Tensor, up_attr: Tensor) -> Tensor:
-        return self.msg_up_nn((up_x_j, up_attr))
-
-    def message_down(self, down_x_j: Tensor, down_attr: Tensor) -> Tensor:
-        return self.msg_down_nn((down_x_j, down_attr))
-    
-    def message_boundary(self, boundary_x_j: Tensor) -> Tensor:
-        return self.msg_boundaries_nn(boundary_x_j)
-    
- 
 class LessSparseCINConv(torch.nn.Module):
     """A cellular version of GIN which performs message passing from cellular upper
     neighbors, cellular lower neighbors and boundaries, but not from co-boundaries
@@ -629,11 +484,11 @@ class LessSparseCINConv(torch.nn.Module):
                 graph_norm(kwargs['hidden']),
                 kwargs['act_module']())
 
-            mp = LessSparseCINCochainConv(dim, up_msg_size, down_msg_size, boundary_msg_size=boundary_msg_size,
+            mp = DenseCINCochainConv(dim, up_msg_size, down_msg_size, boundary_msg_size=boundary_msg_size,
                 msg_up_nn=msg_up_nn, msg_boundaries_nn=msg_boundaries_nn, update_up_nn=update_up_nn,
                 msg_down_nn=msg_down_nn, update_down_nn=update_down_nn,
                 update_boundaries_nn=update_boundaries_nn, combine_nn=combine_nn, eps=eps,
-                train_eps=train_eps)
+                train_eps=train_eps, variant='less-sparse')
             self.mp_levels.append(mp)
 
     def forward(self, *cochain_params: CochainMessagePassingParams, start_to_process=0):
@@ -655,46 +510,78 @@ class DenseCINCochainConv(CochainMessagePassing):
     Based on LessSparseCINCochainConv
     """
     def __init__(self, dim: int,
-                 up_msg_size: int,
-                 down_msg_size: int,
-                 boundary_msg_size: Optional[int],
-                 coboundary_msg_size: Optional[int],
-                 msg_up_nn: Callable,
-                 msg_down_nn: Callable,
-                 msg_boundaries_nn: Callable,
-                 msg_coboundaries_nn: Callable,
-                 update_up_nn: Callable,
-                 update_down_nn: Callable,
-                 update_boundaries_nn: Callable,
-                 update_coboundaries_nn: Callable,
-                 combine_nn: Callable,
+                 up_msg_size: Optional[int] = None,
+                 down_msg_size: Optional[int] = None,
+                 boundary_msg_size: Optional[int] = None,
+                 coboundary_msg_size: Optional[int] = None,
+                 msg_up_nn: Optional[Callable] = None,
+                 msg_down_nn: Optional[Callable] = None,
+                 msg_boundaries_nn: Optional[Callable] = None,
+                 msg_coboundaries_nn: Optional[Callable] = None,
+                 update_up_nn: Optional[Callable] = None,
+                 update_down_nn: Optional[Callable] = None,
+                 update_boundaries_nn: Optional[Callable] = None,
+                 update_coboundaries_nn: Optional[Callable] = None,
+                 combine_nn: Optional[Callable] = None,
                  eps: float = 0.,
-                 train_eps: bool = False):
+                 train_eps: bool = False,
+                 variant='dense'):
+        if variant == 'gnn': # default graph neural network over original graph
+            self.use_up_msg=True
+            self.use_down_msg=False
+            self.use_boundary_msg=False
+            self.use_coboundary_msg=False
+        elif variant == 'sparse':
+            self.use_up_msg=True
+            self.use_down_msg=False
+            self.use_boundary_msg=True
+            self.use_coboundary_msg=False
+        elif variant == 'less-sparse':
+            self.use_up_msg=True
+            self.use_down_msg=True
+            self.use_boundary_msg=True
+            self.use_coboundary_msg=False
+        elif variant == 'dense':
+            self.use_up_msg=True
+            self.use_down_msg=True
+            self.use_boundary_msg=True
+            self.use_coboundary_msg=True
+
+        # TODO: add bunch of asserts here so that the nn's and the msg_sizes 
+        # we need to use are not None!
+
         super(DenseCINCochainConv, self).__init__(up_msg_size, down_msg_size, boundary_msg_size=boundary_msg_size,
                                                 coboundary_msg_size=coboundary_msg_size,
-                                                use_down_msg=True,
-                                                use_coboundary_msg=True)
+                                                use_up_msg=self.use_up_msg,
+                                                use_down_msg=self.use_down_msg,
+                                                use_boundary_msg=self.use_boundary_msg,
+                                                use_coboundary_msg=self.use_coboundary_msg)
         self.dim = dim
-        self.msg_up_nn = msg_up_nn
-        self.msg_down_nn = msg_down_nn
-        self.msg_boundaries_nn = msg_boundaries_nn
-        self.msg_coboundaries_nn = msg_coboundaries_nn
-        self.update_up_nn = update_up_nn
-        self.update_down_nn = update_down_nn
-        self.update_boundaries_nn = update_boundaries_nn
-        self.update_coboundaries_nn = update_coboundaries_nn
+
+        self.msg_up_nn = msg_up_nn                              if self.use_up_msg else None 
+        self.msg_down_nn = msg_down_nn                          if self.use_down_msg else None
+        self.msg_boundaries_nn = msg_boundaries_nn              if self.use_boundary_msg else None
+        self.msg_coboundaries_nn = msg_coboundaries_nn          if self.use_coboundary_msg else None
+
+        self.update_up_nn = update_up_nn                        if self.use_up_msg else None 
+        self.update_down_nn = update_down_nn                    if self.use_down_msg else None
+        self.update_boundaries_nn = update_boundaries_nn        if self.use_boundary_msg else None
+        self.update_coboundaries_nn = update_coboundaries_nn    if self.use_coboundary_msg else None
+
         self.combine_nn = combine_nn
+
         self.initial_eps = eps
         if train_eps:
-            self.eps1 = torch.nn.Parameter(torch.Tensor([eps])) # for upper adjacencies
-            self.eps2 = torch.nn.Parameter(torch.Tensor([eps])) # for boundaries
-            self.eps3 = torch.nn.Parameter(torch.Tensor([eps])) # for lower adjacencies
-            self.eps4 = torch.nn.Parameter(torch.Tensor([eps])) # for coboundaries
+            self.eps1 = torch.nn.Parameter(torch.Tensor([eps])) if self.use_up_msg else None # for upper adjacencies
+            self.eps2 = torch.nn.Parameter(torch.Tensor([eps])) if self.use_down_msg else None # for lower adjacencies
+            self.eps3 = torch.nn.Parameter(torch.Tensor([eps])) if self.use_boundary_msg else None # for boundaries
+            self.eps4 = torch.nn.Parameter(torch.Tensor([eps])) if self.use_coboundary_msg else None # for coboundaries
         else:
-            self.register_buffer('eps1', torch.Tensor([eps]))
-            self.register_buffer('eps2', torch.Tensor([eps]))
-            self.register_buffer('eps3', torch.Tensor([eps]))
-            self.register_buffer('eps4', torch.Tensor([eps]))
+            self.register_buffer('eps1', torch.Tensor([eps])) if self.use_up_msg else None 
+            self.register_buffer('eps2', torch.Tensor([eps])) if self.use_down_msg else None
+            self.register_buffer('eps3', torch.Tensor([eps])) if self.use_boundary_msg else None
+            self.register_buffer('eps4', torch.Tensor([eps])) if self.use_coboundary_msg else None
+        
         self.reset_parameters()
 
     def forward(self, cochain: CochainMessagePassingParams):
@@ -711,34 +598,43 @@ class DenseCINCochainConv(CochainMessagePassing):
                                                 )
 
         # As in GIN, we can learn an injective update function for each multi-set
-        out_up += (1 + self.eps1) * cochain.x
-        out_down += (1 + self.eps3) * cochain.x
-        out_boundaries += (1 + self.eps2) * cochain.x
-        out_coboundaries += (1 + self.eps4) * cochain.x
-        out_up = self.update_up_nn(out_up)
-        out_down = self.update_down_nn(out_down)
-        out_boundaries = self.update_boundaries_nn(out_boundaries)
-        out_coboundaries = self.update_coboundaries_nn(out_coboundaries)
+        out_up += (1 + self.eps1) * cochain.x if self.use_up_msg else 0.
+        out_down += (1 + self.eps2) * cochain.x if self.use_down_msg else 0.
+        out_boundaries += (1 + self.eps3) * cochain.x if self.use_boundary_msg else 0.
+        out_coboundaries += (1 + self.eps4) * cochain.x if self.use_coboundary_msg else 0.
+
+        out_up = self.update_up_nn(out_up) if self.use_up_msg else None
+        out_down = self.update_down_nn(out_down) if self.use_down_msg else None
+        out_boundaries = self.update_boundaries_nn(out_boundaries) if self.use_boundary_msg else None
+        out_coboundaries = self.update_coboundaries_nn(out_coboundaries) if self.use_coboundary_msg else None
 
         # We need to combine the two such that the output is injective
         # Because the cross product of countable spaces is countable, then such a function exists.
         # And we can learn it with another MLP.
-        return self.combine_nn(torch.cat([out_up, out_down, out_boundaries, out_coboundaries], dim=-1))
+        outs_list = []
+        outs_list += [out_up] if self.use_up_msg else []
+        outs_list += [out_down] if self.use_down_msg else []
+        outs_list += [out_boundaries] if self.use_boundary_msg else []
+        outs_list += [out_coboundaries] if self.use_coboundary_msg else []
+        return self.combine_nn(torch.cat(outs_list, dim=-1))
 
     def reset_parameters(self):
         reset(self.msg_up_nn)
         reset(self.msg_down_nn)
         reset(self.msg_boundaries_nn)
         reset(self.msg_coboundaries_nn)
+
         reset(self.update_up_nn)
         reset(self.update_down_nn)
-        reset(self.update_boundaries_nn)
+        reset(self.update_boundaries_nn) 
         reset(self.update_coboundaries_nn)
+
         reset(self.combine_nn)
-        self.eps1.data.fill_(self.initial_eps)
-        self.eps2.data.fill_(self.initial_eps)
-        self.eps3.data.fill_(self.initial_eps)
-        self.eps4.data.fill_(self.initial_eps)
+        
+        self.eps1.data.fill_(self.initial_eps) if self.use_up_msg else None 
+        self.eps2.data.fill_(self.initial_eps) if self.use_down_msg else None
+        self.eps3.data.fill_(self.initial_eps) if self.use_boundary_msg else None
+        self.eps4.data.fill_(self.initial_eps) if self.use_coboundary_msg else None
 
     def message_up(self, up_x_j: Tensor, up_attr: Tensor) -> Tensor:
         return self.msg_up_nn((up_x_j, up_attr))
