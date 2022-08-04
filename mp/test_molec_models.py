@@ -112,12 +112,15 @@ def test_molec_models_with_batching_on_proteins(model):
         include_down_adj = False
         include_coboundary_links = False
         model = EmbedSparseCIN(atom_types=64, bond_types=4, out_size=3, num_layers=3, hidden=5,
-                           jump_mode='cat', max_dim=2)
+                           jump_mode='cat', max_dim=2,
+                            use_coboundaries=True)
     elif model == 'lesssparsecin':
         include_down_adj = True
         include_coboundary_links = False
         model = EmbedLessSparseCIN(atom_types=64, bond_types=4, out_size=3, num_layers=3, hidden=5,
-                           jump_mode='cat', max_dim=2)
+                           jump_mode='cat', max_dim=2,
+                            use_coboundaries=True,
+                            use_boundaries=True)
     elif model == 'densecin':
         include_down_adj = True
         include_coboundary_links = True
