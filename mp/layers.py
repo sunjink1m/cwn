@@ -160,81 +160,6 @@ class Catter(torch.nn.Module):
         return torch.cat(x, dim=-1)
     
     
-class SparseCINConv(torch.nn.Module):
-    """A cellular version of GIN which performs message passing from  cellular upper
-    neighbors and boundaries, but not from cellular lower neighbors nor co-boundaries
-    (hence why "Sparse")
-    """
-
-    # TODO: Refactor the way we pass networks externally to allow for different networks per dim.
-    def __init__(self, up_msg_size: int, down_msg_size: int, boundary_msg_size: Optional[int],
-                 passed_msg_up_nn: Optional[Callable], passed_msg_boundaries_nn: Optional[Callable],
-                 passed_update_up_nn: Optional[Callable],
-                 passed_update_boundaries_nn: Optional[Callable],
-                 eps: float = 0., train_eps: bool = False, max_dim: int = 2,
-                 graph_norm=BN, use_coboundaries=False, **kwargs):
-        super(SparseCINConv, self).__init__()
-        self.max_dim = max_dim
-        self.mp_levels = torch.nn.ModuleList()
-        for dim in range(max_dim+1):
-            msg_up_nn = passed_msg_up_nn
-            if msg_up_nn is None:
-                if use_coboundaries:
-                    msg_up_nn = Sequential(
-                            Catter(),
-                            Linear(kwargs['layer_dim'] * 2, kwargs['layer_dim']),
-                            kwargs['act_module']())
-                else:
-                    msg_up_nn = lambda xs: xs[0]
-
-            msg_boundaries_nn = passed_msg_boundaries_nn
-            if msg_boundaries_nn is None:
-                msg_boundaries_nn = lambda x: x
-
-            update_up_nn = passed_update_up_nn
-            if update_up_nn is None:
-                update_up_nn = Sequential(
-                    Linear(kwargs['layer_dim'], kwargs['hidden']),
-                    graph_norm(kwargs['hidden']),
-                    kwargs['act_module'](),
-                    Linear(kwargs['hidden'], kwargs['hidden']),
-                    graph_norm(kwargs['hidden']),
-                    kwargs['act_module']()
-                )
-
-            update_boundaries_nn = passed_update_boundaries_nn
-            if update_boundaries_nn is None:
-                update_boundaries_nn = Sequential(
-                    Linear(kwargs['layer_dim'], kwargs['hidden']),
-                    graph_norm(kwargs['hidden']),
-                    kwargs['act_module'](),
-                    Linear(kwargs['hidden'], kwargs['hidden']),
-                    graph_norm(kwargs['hidden']),
-                    kwargs['act_module']()
-                )
-            combine_nn = Sequential(
-                Linear(kwargs['hidden']*2, kwargs['hidden']),
-                graph_norm(kwargs['hidden']),
-                kwargs['act_module']())
-
-            mp = DenseCINCochainConv(dim, up_msg_size, down_msg_size, boundary_msg_size=boundary_msg_size,
-                msg_up_nn=msg_up_nn, msg_boundaries_nn=msg_boundaries_nn, update_up_nn=update_up_nn,
-                update_boundaries_nn=update_boundaries_nn, combine_nn=combine_nn, eps=eps,
-                train_eps=train_eps, variant='sparse')
-            self.mp_levels.append(mp)
-
-    def forward(self, *cochain_params: CochainMessagePassingParams, start_to_process=0):
-        assert len(cochain_params) <= self.max_dim+1
-
-        out = []
-        for dim in range(len(cochain_params)):
-            if dim < start_to_process:
-                out.append(cochain_params[dim].x)
-            else:
-                out.append(self.mp_levels[dim].forward(cochain_params[dim]))
-        return out
-
-
 class OrientedConv(CochainMessagePassing):
     def __init__(self, dim: int, up_msg_size: int, down_msg_size: int,
                  update_up_nn: Optional[Callable], update_down_nn: Optional[Callable],
@@ -401,108 +326,6 @@ class OGBEmbedVEWithReduce(AbstractEmbedVEWithReduce):
         return e_params.x.to(dtype=torch.long)
 
 
-class LessSparseCINConv(torch.nn.Module):
-    """A cellular version of GIN which performs message passing from cellular upper
-    neighbors, cellular lower neighbors and boundaries, but not from co-boundaries
-    (hence why "LessSparse than SparseCINConv")
-
-    Based on SparseCINConv
-    """
-
-    # TODO: Refactor the way we pass networks externally to allow for different networks per dim.
-    def __init__(self, up_msg_size: int, down_msg_size: int, boundary_msg_size: Optional[int],
-                 passed_msg_up_nn: Optional[Callable], passed_msg_boundaries_nn: Optional[Callable],
-                 passed_msg_down_nn: Optional[Callable],
-                 passed_update_up_nn: Optional[Callable],
-                 passed_update_down_nn: Optional[Callable],
-                 passed_update_boundaries_nn: Optional[Callable],
-                 eps: float = 0., train_eps: bool = False, max_dim: int = 2,
-                 graph_norm=BN, use_coboundaries=False,
-                 use_boundaries=False, **kwargs):
-        super(LessSparseCINConv, self).__init__()
-        self.max_dim = max_dim
-        self.mp_levels = torch.nn.ModuleList()
-        for dim in range(max_dim+1):
-            msg_up_nn = passed_msg_up_nn
-            if msg_up_nn is None:
-                if use_coboundaries:
-                    msg_up_nn = Sequential(
-                            Catter(),
-                            Linear(kwargs['layer_dim'] * 2, kwargs['layer_dim']),
-                            kwargs['act_module']())
-                else:
-                    msg_up_nn = lambda xs: xs[0]
-
-            msg_down_nn = passed_msg_down_nn
-            if msg_down_nn is None:
-                if use_boundaries:
-                    msg_down_nn = Sequential(
-                            Catter(),
-                            Linear(kwargs['layer_dim'] * 2, kwargs['layer_dim']),
-                            kwargs['act_module']())
-                else:
-                    msg_down_nn = lambda xs: xs[0]
-
-            msg_boundaries_nn = passed_msg_boundaries_nn
-            if msg_boundaries_nn is None:
-                msg_boundaries_nn = lambda x: x
-
-            update_up_nn = passed_update_up_nn
-            if update_up_nn is None:
-                update_up_nn = Sequential(
-                    Linear(kwargs['layer_dim'], kwargs['hidden']),
-                    graph_norm(kwargs['hidden']),
-                    kwargs['act_module'](),
-                    Linear(kwargs['hidden'], kwargs['hidden']),
-                    graph_norm(kwargs['hidden']),
-                    kwargs['act_module']()
-                )
-
-            update_down_nn = passed_update_down_nn
-            if update_down_nn is None:
-                update_down_nn = Sequential(
-                    Linear(kwargs['layer_dim'], kwargs['hidden']),
-                    graph_norm(kwargs['hidden']),
-                    kwargs['act_module'](),
-                    Linear(kwargs['hidden'], kwargs['hidden']),
-                    graph_norm(kwargs['hidden']),
-                    kwargs['act_module']()
-                )
-
-            update_boundaries_nn = passed_update_boundaries_nn
-            if update_boundaries_nn is None:
-                update_boundaries_nn = Sequential(
-                    Linear(kwargs['layer_dim'], kwargs['hidden']),
-                    graph_norm(kwargs['hidden']),
-                    kwargs['act_module'](),
-                    Linear(kwargs['hidden'], kwargs['hidden']),
-                    graph_norm(kwargs['hidden']),
-                    kwargs['act_module']()
-                )
-            combine_nn = Sequential(
-                Linear(kwargs['hidden']*3, kwargs['hidden']),
-                graph_norm(kwargs['hidden']),
-                kwargs['act_module']())
-
-            mp = DenseCINCochainConv(dim, up_msg_size, down_msg_size, boundary_msg_size=boundary_msg_size,
-                msg_up_nn=msg_up_nn, msg_boundaries_nn=msg_boundaries_nn, update_up_nn=update_up_nn,
-                msg_down_nn=msg_down_nn, update_down_nn=update_down_nn,
-                update_boundaries_nn=update_boundaries_nn, combine_nn=combine_nn, eps=eps,
-                train_eps=train_eps, variant='less-sparse')
-            self.mp_levels.append(mp)
-
-    def forward(self, *cochain_params: CochainMessagePassingParams, start_to_process=0):
-        assert len(cochain_params) <= self.max_dim+1
-
-        out = []
-        for dim in range(len(cochain_params)):
-            if dim < start_to_process:
-                out.append(cochain_params[dim].x)
-            else:
-                out.append(self.mp_levels[dim].forward(cochain_params[dim]))
-        return out
-
-
 class DenseCINCochainConv(CochainMessagePassing):
     """This is a CIN Cochain layer that operates of upper adjacent cells,
     lower adjacent cells, boundary, and coboundaries.
@@ -652,27 +475,37 @@ class DenseCINCochainConv(CochainMessagePassing):
 class DenseCINConv(torch.nn.Module):
     """A cellular version of GIN which performs message passing from cellular upper
     neighbors, cellular lower neighbors, boundaries, and boundaries.
-    (Which is why it's "Dense"r than "SparseCINConv" and "LessSparseCINConv")
-
-    Based on LessSparseCINConv
     """
 
     # TODO: Refactor the way we pass networks externally to allow for different networks per dim.
-    def __init__(self, up_msg_size: int, down_msg_size: int, boundary_msg_size: Optional[int],
-                 coboundary_msg_size: Optional[int],
-                 passed_msg_up_nn: Optional[Callable], passed_msg_boundaries_nn: Optional[Callable],
-                 passed_msg_down_nn: Optional[Callable],
-                 passed_msg_coboundaries_nn: Optional[Callable],
-                 passed_update_up_nn: Optional[Callable],
-                 passed_update_down_nn: Optional[Callable],
-                 passed_update_boundaries_nn: Optional[Callable],
-                 passed_update_coboundaries_nn: Optional[Callable],
+    def __init__(self, up_msg_size: int, 
+                 down_msg_size: int, 
+                 boundary_msg_size: Optional[int] = None,
+                 coboundary_msg_size: Optional[int] = None,
+                 passed_msg_up_nn: Optional[Callable] = None,
+                 passed_msg_boundaries_nn: Optional[Callable] = None,
+                 passed_msg_down_nn: Optional[Callable] = None,
+                 passed_msg_coboundaries_nn: Optional[Callable] = None,
+                 passed_update_up_nn: Optional[Callable] = None,
+                 passed_update_down_nn: Optional[Callable] = None,
+                 passed_update_boundaries_nn: Optional[Callable] = None,
+                 passed_update_coboundaries_nn: Optional[Callable] = None,
                  eps: float = 0., train_eps: bool = False, max_dim: int = 2,
                  graph_norm=BN, use_coboundaries=False,
-                 use_boundaries=False, **kwargs):
+                 use_boundaries=False, variant='dense', **kwargs):
         super(DenseCINConv, self).__init__()
         self.max_dim = max_dim
         self.mp_levels = torch.nn.ModuleList()
+
+        if variant == 'gnn': # default graph neural network over original graph
+            self.diff_adjs = 1
+        elif variant == 'sparse':
+            self.diff_adjs = 2
+        elif variant == 'less-sparse':
+            self.diff_adjs = 3
+        elif variant == 'dense':
+            self.diff_adjs = 4
+
         for dim in range(max_dim+1):
             msg_up_nn = passed_msg_up_nn
             if msg_up_nn is None:
@@ -747,7 +580,7 @@ class DenseCINConv(torch.nn.Module):
                 )
             
             combine_nn = Sequential(
-                Linear(kwargs['hidden']*4, kwargs['hidden']),
+                Linear(kwargs['hidden']*self.diff_adjs, kwargs['hidden']),
                 graph_norm(kwargs['hidden']),
                 kwargs['act_module']())
 
@@ -757,7 +590,7 @@ class DenseCINConv(torch.nn.Module):
                 msg_down_nn=msg_down_nn, update_down_nn=update_down_nn,
                 msg_coboundaries_nn=msg_coboundaries_nn, update_coboundaries_nn=update_coboundaries_nn,
                 update_boundaries_nn=update_boundaries_nn, combine_nn=combine_nn, eps=eps,
-                train_eps=train_eps)
+                train_eps=train_eps, variant=variant)
             self.mp_levels.append(mp)
 
     def forward(self, *cochain_params: CochainMessagePassingParams, start_to_process=0):
