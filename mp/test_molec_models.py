@@ -4,7 +4,7 @@ import pytest
 
 from data.complex import ComplexBatch
 from data.dummy_complexes import get_testing_complex_list
-from mp.molec_models import (EmbedSparseCIN, EmbedLessSparseCIN, OGBEmbedSparseCIN, EmbedSparseCINNoRings, 
+from mp.molec_models import (OGBEmbedSparseCIN, EmbedSparseCINNoRings, 
                             EmbedGIN, EmbedDenseCIN, EmbedSparseDeeperCCN)
 from data.data_loading import DataLoader, load_dataset
 
@@ -111,16 +111,16 @@ def test_molec_models_with_batching_on_proteins(model):
     if model == 'sparsecin':
         include_down_adj = False
         include_coboundary_links = False
-        model = EmbedSparseCIN(atom_types=64, bond_types=4, out_size=3, num_layers=3, hidden=5,
+        model = EmbedDenseCIN(atom_types=64, bond_types=4, out_size=3, num_layers=3, hidden=5,
                            jump_mode='cat', max_dim=2,
-                            use_coboundaries=True)
+                            use_coboundaries=True, variant='dense')
     elif model == 'lesssparsecin':
         include_down_adj = True
         include_coboundary_links = False
-        model = EmbedLessSparseCIN(atom_types=64, bond_types=4, out_size=3, num_layers=3, hidden=5,
+        model = EmbedDenseCIN(atom_types=64, bond_types=4, out_size=3, num_layers=3, hidden=5,
                            jump_mode='cat', max_dim=2,
                             use_coboundaries=True,
-                            use_boundaries=True)
+                            use_boundaries=True, variant='less-sparse')
     elif model == 'densecin':
         include_down_adj = True
         include_coboundary_links = True
@@ -223,11 +223,11 @@ def test_molec_models_with_batching(model):
             model = OGBEmbedSparseCIN(out_size=3, num_layers=3, hidden=5,
                                     jump_mode=None, max_dim=model_max_dim)
         elif model=='sparse':
-            model = EmbedSparseCIN(atom_types=32, bond_types=4, out_size=3, num_layers=3, hidden=5,
-                                jump_mode='cat', max_dim=model_max_dim)
+            model = EmbedDenseCIN(atom_types=32, bond_types=4, out_size=3, num_layers=3, hidden=5,
+                                jump_mode='cat', max_dim=model_max_dim, variant='sparse')
         elif model=='lesssparse':
-            model = EmbedLessSparseCIN(atom_types=32, bond_types=4, out_size=3, num_layers=3, hidden=5,
-                                jump_mode='cat', max_dim=model_max_dim)
+            model = EmbedDenseCIN(atom_types=32, bond_types=4, out_size=3, num_layers=3, hidden=5,
+                                jump_mode='cat', max_dim=model_max_dim, variant='less-sparse')
         elif model=='zincdensecin':
             model = EmbedDenseCIN(atom_types=32, 
                         bond_types=4, 
@@ -238,7 +238,8 @@ def test_molec_models_with_batching(model):
                         jump_mode=None, 
                         nonlinearity='sigmoid',
                         embed_edge=True, 
-                        embed_dim=5)
+                        embed_dim=5,
+                        variant='dense')
         # We use the model in eval mode to avoid problems with batch norm.
         model.eval()
 
