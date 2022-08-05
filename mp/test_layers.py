@@ -287,7 +287,8 @@ def test_dense_cin_conv_training():
                 all_inactive_params_before.append(parameter.clone().data)
         except:
             print(f'{layer} is not a nn.Module')
-    assert len(all_inactive_params_before) > 0
+    assert len(all_inactive_params_before) == 0 # we have removed all redundant 
+                                                # parameters from DenseCINConv
 
 
 
@@ -322,7 +323,7 @@ def test_dense_cin_conv_training():
                 all_inactive_params_after.append(parameter.clone().data)
         except:
             print(f'{layer} is not a nn.Module')
-    assert len(all_inactive_params_after) > 0
+    assert len(all_inactive_params_after) == 0
 
     asdf = [all_active_params_before[i]==all_active_params_after[i] for i in range(len(all_active_params_before))]
     asdf2 = [all_inactive_params_before[i]==all_inactive_params_after[i] for i in range(len(all_inactive_params_before))]

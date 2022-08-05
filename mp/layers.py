@@ -337,6 +337,10 @@ class DenseCINCochainConv(CochainMessagePassing):
                  down_msg_size: Optional[int] = None,
                  boundary_msg_size: Optional[int] = None,
                  coboundary_msg_size: Optional[int] = None,
+                 use_up_msg: Optional[bool] = True,
+                 use_down_msg: Optional[bool] = True,
+                 use_boundary_msg: Optional[bool] = True,
+                 use_coboundary_msg: Optional[bool] = True,
                  msg_up_nn: Optional[Callable] = None,
                  msg_down_nn: Optional[Callable] = None,
                  msg_boundaries_nn: Optional[Callable] = None,
@@ -349,26 +353,11 @@ class DenseCINCochainConv(CochainMessagePassing):
                  eps: float = 0.,
                  train_eps: bool = False,
                  variant='dense'):
-        if variant == 'gnn': # default graph neural network over original graph
-            self.use_up_msg=True
-            self.use_down_msg=False
-            self.use_boundary_msg=False
-            self.use_coboundary_msg=False
-        elif variant == 'sparse':
-            self.use_up_msg=True
-            self.use_down_msg=False
-            self.use_boundary_msg=True
-            self.use_coboundary_msg=False
-        elif variant == 'less-sparse':
-            self.use_up_msg=True
-            self.use_down_msg=True
-            self.use_boundary_msg=True
-            self.use_coboundary_msg=False
-        elif variant == 'dense':
-            self.use_up_msg=True
-            self.use_down_msg=True
-            self.use_boundary_msg=True
-            self.use_coboundary_msg=True
+        
+        self.use_up_msg = use_up_msg
+        self.use_down_msg = use_down_msg
+        self.use_boundary_msg = use_boundary_msg
+        self.use_coboundary_msg = use_coboundary_msg
 
         # TODO: add bunch of asserts here so that the nn's and the msg_sizes 
         # we need to use are not None!
@@ -498,15 +487,48 @@ class DenseCINConv(torch.nn.Module):
         self.mp_levels = torch.nn.ModuleList()
 
         if variant == 'gnn': # default graph neural network over original graph
-            self.diff_adjs = 1
+            self.use_up_msg = True
+            self.use_down_msg = False
+            self.use_boundary_msg = False
+            self.use_coboundary_msg = False
         elif variant == 'sparse':
-            self.diff_adjs = 2
+            self.use_up_msg = True
+            self.use_down_msg = False
+            self.use_boundary_msg = True
+            self.use_coboundary_msg = False
         elif variant == 'less-sparse':
-            self.diff_adjs = 3
+            self.use_up_msg = True
+            self.use_down_msg = True
+            self.use_boundary_msg = True
+            self.use_coboundary_msg = False
         elif variant == 'dense':
-            self.diff_adjs = 4
+            self.use_up_msg = True
+            self.use_down_msg = True
+            self.use_boundary_msg = True
+            self.use_coboundary_msg = True
 
         for dim in range(max_dim+1):
+            """
+            We sort out some things in order to get rid of unused learnable parameters.
+            This means we 
+            1. Set use_X_msg to false in certain dimensions (e.g. turn off msg_up 
+                in the highest dimension) so that, even though we do pass the 
+                appropriate nn's into the CochainConv, they will be ignored.
+            2. Set the length of the combine_nn appropriately so we don't need 
+                to pass on zero feature vectors in order to match the dimensions.
+            """
+            bottom_dim = (dim == 0) # there are no down_msg's and boundary links in the bottom dimension
+            top_dim = (dim == max_dim) # there are no up_msg's and coboundary links in the bottom dimension
+
+            # if in bottom dim, ignore up_msg and coboundary links (because there are none)
+            use_up_msg = self.use_up_msg and (not top_dim)
+            use_down_msg = self.use_down_msg and (not bottom_dim)
+            use_boundary_msg = self.use_boundary_msg and (not bottom_dim)
+            use_coboundary_msg = self.use_coboundary_msg and (not top_dim)
+
+            # count how many types of 'adjacencies' we are using
+            num_adjs = use_up_msg + use_down_msg + use_boundary_msg + use_coboundary_msg
+            
             msg_up_nn = passed_msg_up_nn
             if msg_up_nn is None:
                 if use_coboundaries:
@@ -580,7 +602,7 @@ class DenseCINConv(torch.nn.Module):
                 )
             
             combine_nn = Sequential(
-                Linear(kwargs['hidden']*self.diff_adjs, kwargs['hidden']),
+                Linear(kwargs['hidden']*num_adjs, kwargs['hidden']),
                 graph_norm(kwargs['hidden']),
                 kwargs['act_module']())
 
@@ -590,7 +612,11 @@ class DenseCINConv(torch.nn.Module):
                 msg_down_nn=msg_down_nn, update_down_nn=update_down_nn,
                 msg_coboundaries_nn=msg_coboundaries_nn, update_coboundaries_nn=update_coboundaries_nn,
                 update_boundaries_nn=update_boundaries_nn, combine_nn=combine_nn, eps=eps,
-                train_eps=train_eps, variant=variant)
+                train_eps=train_eps, variant=variant,
+                use_up_msg = use_up_msg,
+                use_down_msg = use_down_msg,
+                use_boundary_msg = use_boundary_msg,
+                use_coboundary_msg = use_coboundary_msg)
             self.mp_levels.append(mp)
 
     def forward(self, *cochain_params: CochainMessagePassingParams, start_to_process=0):
