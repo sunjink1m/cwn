@@ -38,7 +38,8 @@ class TUDataset(InMemoryComplexDataset):
     """A dataset of complexes obtained by lifting graphs from TUDatasets."""
 
     def __init__(self, root, name, max_dim=2, num_classes=2, degree_as_tag=False, fold=0,
-                 init_method='sum', seed=0, include_down_adj=False, max_ring_size=None):
+                 init_method='sum', seed=0, include_down_adj=False, max_ring_size=None, 
+                 include_coboundary_links=False):
         self.name = name
         self.degree_as_tag = degree_as_tag
         assert max_ring_size is None or max_ring_size > 3
@@ -48,7 +49,8 @@ class TUDataset(InMemoryComplexDataset):
             assert max_dim == 2
 
         super(TUDataset, self).__init__(root, max_dim=max_dim, num_classes=num_classes,
-            init_method=init_method, include_down_adj=include_down_adj, cellular=cellular)
+            init_method=init_method, include_down_adj=include_down_adj, cellular=cellular,
+            include_coboundary_links=include_coboundary_links)
 
         self.data, self.slices = torch.load(self.processed_paths[0])
             
@@ -79,6 +81,7 @@ class TUDataset(InMemoryComplexDataset):
         directory = super(TUDataset, self).processed_dir
         suffix = f"_{self._max_ring_size}rings" if self._cellular else ""
         suffix += f"_down_adj" if self.include_down_adj else ""
+        suffix += f"_CBL" if self.include_coboundary_links else ""
         return directory + suffix
             
     @property
@@ -108,6 +111,7 @@ class TUDataset(InMemoryComplexDataset):
             print("Converting the dataset accounting for rings...")
             complexes, _, _ = convert_graph_dataset_with_rings(graph_list, max_ring_size=self._max_ring_size,
                                                                include_down_adj=self.include_down_adj,
+                                                               include_coboundary_links=self.include_coboundary_links,
                                                                init_method=self._init_method,
                                                                init_edges=True, init_rings=True)
         else:
@@ -116,6 +120,7 @@ class TUDataset(InMemoryComplexDataset):
             # What about the init_method here? Adding now, although I remember we had handled this
             complexes, _, _ = convert_graph_dataset_with_gudhi(graph_list, expansion_dim=self.max_dim,
                                                                include_down_adj=self.include_down_adj,
+                                                               include_coboundary_links=self.include_coboundary_links,
                                                                init_method=self._init_method)
 
         torch.save(self.collate(complexes, self.max_dim), self.processed_paths[0])

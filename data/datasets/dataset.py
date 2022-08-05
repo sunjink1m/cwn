@@ -135,8 +135,10 @@ class InMemoryComplexDataset(ComplexDataset):
     
     def __init__(self, root=None, transform=None, pre_transform=None,
                  pre_filter=None, max_dim: int = None, num_classes: int = None,
-                 include_down_adj=False, init_method=None, cellular: bool = False):
+                 include_down_adj=False, init_method=None, cellular: bool = False, 
+                 include_coboundary_links=False):
         self.include_down_adj = include_down_adj
+        self.include_coboundary_links = include_coboundary_links
         super(InMemoryComplexDataset, self).__init__(root, transform, pre_transform, pre_filter,
                                                      max_dim, num_classes, init_method=init_method,
                                                      cellular=cellular)

@@ -92,6 +92,7 @@ class CochainMessagePassing(torch.nn.Module):
                  aggr_coboundary: Optional[str] = "add",
                  flow: str = "source_to_target",
                  node_dim: int = -2,
+                 use_up_msg=True,
                  use_down_msg=True,
                  use_boundary_msg=True,
                  use_coboundary_msg=False):
@@ -100,6 +101,7 @@ class CochainMessagePassing(torch.nn.Module):
 
         self.up_msg_size = up_msg_size
         self.down_msg_size = down_msg_size
+        self.use_up_msg = use_up_msg
         self.use_boundary_msg = use_boundary_msg
         self.use_down_msg = use_down_msg
         self.use_coboundary_msg = use_coboundary_msg
@@ -403,7 +405,7 @@ class CochainMessagePassing(torch.nn.Module):
 
         up_out, down_out = None, None
         # Up messaging and aggregation
-        if up_index is not None:
+        if self.use_up_msg and up_index is not None:
             up_out = self.__message_and_aggregate__(up_index, 'up', up_size, **kwargs)
 
         # Down messaging and aggregation

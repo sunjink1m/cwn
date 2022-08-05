@@ -116,7 +116,7 @@ def get_complex_rings(r_boundary_index, e_boundary_index):
     return rings
 
 
-def compare_complexes(yielded, expected, include_down_adj):
+def compare_complexes(yielded, expected, include_down_adj, include_coboundary_links=False):
     """Checks that two cell complexes are the same."""
     assert yielded.dimension == expected.dimension
     assert torch.equal(yielded.y, expected.y)
@@ -151,8 +151,13 @@ def compare_complexes(yielded, expected, include_down_adj):
                 assert torch.equal(y_cochain.upper_index, e_cochain.upper_index)
                 assert torch.equal(y_cochain.shared_coboundaries, e_cochain.shared_coboundaries)
         else:
+            assert y_cochain.coboundary_index is None and e_cochain.coboundary_index is None
             assert y_cochain.upper_index is None and e_cochain.upper_index is None
             assert y_cochain.shared_coboundaries is None and e_cochain.shared_coboundaries is None
+        if y_cochain.coboundary_index is None:
+            assert e_cochain.coboundary_index is None
+        else:
+            assert torch.equal(y_cochain.coboundary_index, e_cochain.coboundary_index)
     
 
 def compare_complexes_without_2feats(yielded, expected, include_down_adj):

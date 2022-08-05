@@ -147,6 +147,34 @@ def test_gudhi_clique_complex_dataset_conversion(house_edge_index):
         assert torch.equal(complexes[i].y, house1.y)
 
 
+def test_gudhi_clique_complex_dataset_conversion_with_coboundary_links(house_edge_index):
+    house1 = Data(edge_index=house_edge_index, x=torch.arange(0, 5, dtype=torch.float).view(5, 1), y=torch.tensor([1]))
+    house2 = Data(edge_index=house_edge_index, x=torch.arange(0, 5, dtype=torch.float).view(5, 1), y=torch.tensor([1]))
+    house3 = Data(edge_index=house_edge_index, x=torch.arange(0, 5, dtype=torch.float).view(5, 1), y=torch.tensor([1]))
+    dataset = [house1, house2, house3]
+
+    complexes, dim, num_features = convert_graph_dataset_with_gudhi(dataset, expansion_dim=3, 
+                                                                include_coboundary_links=True)
+    assert dim == 2
+    assert len(num_features) == 3
+    for i in range(len(num_features)):
+        assert num_features[i] == 1
+    assert len(complexes) == 3
+    for i in range(len(complexes)):
+        # Do some basic checks for each complex.
+        assert complexes[i].dimension == 2
+        assert complexes[i].nodes.boundary_index is None
+        assert list(complexes[i].edges.boundary_index.size()) == [2, 2*6]
+        assert list(complexes[i].two_cells.boundary_index.size()) == [2, 3*1]
+        assert complexes[i].edges.lower_index.size(1) == 18
+        assert torch.equal(complexes[i].nodes.x, house1.x)
+        assert torch.equal(complexes[i].y, house1.y)
+        # coboundary links checks
+        assert list(complexes[i].nodes.coboundary_index.size()) == list(complexes[i].edges.boundary_index.size())
+        assert list(complexes[i].edges.coboundary_index.size()) == list(complexes[i].two_cells.boundary_index.size())
+        assert complexes[i].two_cells.coboundary_index is None
+
+
 def test_gudhi_clique_complex_dataset_conversion_with_down_adj_excluded(house_edge_index):
     house1 = Data(edge_index=house_edge_index, x=torch.arange(0, 5, dtype=torch.float).view(5, 1), y=torch.tensor([1]))
     house2 = Data(edge_index=house_edge_index, x=torch.arange(0, 5, dtype=torch.float).view(5, 1), y=torch.tensor([1]))
@@ -659,8 +687,8 @@ def test_coboundary_links(house_edge_index):
     v_params = house_complex.get_cochain_params(dim=0)
 
     assert list(v_params.kwargs['coboundary_index'].size()) == [2, 2*house_complex.edges.num_cells]
-    expected_v_coboundary_index = torch.tensor([[0, 1, 0, 2, 2, 3, 4, 1, 3, 5, 4, 5], 
-                                                [0, 0, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4]], dtype=torch.long)
+    expected_v_coboundary_index = torch.tensor([[0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5],
+                                                [0, 1, 0, 3, 1, 2, 2, 3, 2, 4, 3, 4]], dtype=torch.long)
     assert torch.equal(v_params.coboundary_index, expected_v_coboundary_index)
 
     # dim 1

@@ -12,8 +12,8 @@ from exp.train_utils import train, eval, Evaluator
 from exp.parser import get_parser, validate_args
 from mp.graph_models import GIN0, GINWithJK
 from mp.models import CIN0, Dummy, SparseCIN, EdgeOrient, EdgeMPNN, MessagePassingAgnostic
-from mp.molec_models import (EmbedSparseCIN, OGBEmbedSparseCIN, EmbedSparseCINNoRings,
-                         EmbedGIN, EmbedLessSparseCIN, EmbedDenseCIN, EmbedSparseDeeperCCN)
+from mp.molec_models import (OGBEmbedSparseCIN, EmbedSparseCINNoRings,
+                         EmbedGIN, EmbedDenseCIN, EmbedSparseDeeperCCN)
 from mp.ring_exp_models import RingSparseCIN, RingGIN
 
 
@@ -216,7 +216,7 @@ def main(args):
                       fully_invar=args.fully_orient_invar,
         ).to(device)
     elif args.model == 'embed_sparse_cin':
-        model = EmbedSparseCIN(dataset.num_node_type,  # The number of atomic types
+        model = EmbedDenseCIN(dataset.num_node_type,  # The number of atomic types
                                dataset.num_edge_type,  # The number of bond types
                                dataset.num_classes,  # num_classes
                                args.num_layers,  # num_layers
@@ -231,10 +231,11 @@ def main(args):
                                use_coboundaries=use_coboundaries,
                                embed_edge=args.use_edge_features,
                                graph_norm=args.graph_norm,  # normalization layer
-                               readout_dims=readout_dims  # readout_dims
+                               readout_dims=readout_dims,  # readout_dims
+                               variant='sparse'
                                ).to(device)
     elif args.model == 'embed_less_sparse_cin':
-        model = EmbedLessSparseCIN(dataset.num_node_type,  # The number of atomic types
+        model = EmbedDenseCIN(dataset.num_node_type,  # The number of atomic types
                                dataset.num_edge_type,  # The number of bond types
                                dataset.num_classes,  # num_classes
                                args.num_layers,  # num_layers
@@ -250,7 +251,8 @@ def main(args):
                                use_boundaries=use_boundaries,
                                embed_edge=args.use_edge_features,
                                graph_norm=args.graph_norm,  # normalization layer
-                               readout_dims=readout_dims  # readout_dims
+                               readout_dims=readout_dims,  # readout_dims
+                               variant='less-sparse'
                                ).to(device)
     elif args.model == 'embed_dense_cin':
         model = EmbedDenseCIN(dataset.num_node_type,  # The number of atomic types
@@ -269,7 +271,8 @@ def main(args):
                                use_boundaries=use_boundaries,
                                embed_edge=args.use_edge_features,
                                graph_norm=args.graph_norm,  # normalization layer
-                               readout_dims=readout_dims  # readout_dims
+                               readout_dims=readout_dims,  # readout_dims
+                               variant='dense'
                                ).to(device)
     elif args.model == 'embed_sparse_deeper_ccn':
         model = EmbedSparseDeeperCCN(dataset.num_node_type,  # The number of atomic types

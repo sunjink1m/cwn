@@ -20,7 +20,8 @@ class ZincDataset(InMemoryComplexDataset):
         self._n_jobs = n_jobs
         super(ZincDataset, self).__init__(root, transform, pre_transform, pre_filter,
                                           max_dim=2, cellular=True, num_classes=1, 
-                                          include_down_adj=include_down_adj)
+                                          include_down_adj=include_down_adj, 
+                                          include_coboundary_links=include_coboundary_links)
 
         self.data, self.slices, idx = self.load_dataset()
         self.train_ids = idx[0]
