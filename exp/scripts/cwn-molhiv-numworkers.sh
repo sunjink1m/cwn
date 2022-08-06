@@ -1,6 +1,6 @@
 #!/bin/bash
 
-for i in 1 2 3 4 5 6 7 8
+for i in 0 1 2 3 4 5 6 7 8
 do
   python -m cProfile -o denseprof$i.txt exp/run_mol_exp.py \
     --device 0 \
