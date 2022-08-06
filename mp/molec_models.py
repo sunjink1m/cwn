@@ -96,7 +96,7 @@ class OGBEmbedSparseCIN(torch.nn.Module):
         res = {}
 
         # Embed and populate higher-levels
-        params = data.get_all_cochain_params(max_dim=self.max_dim, include_down_features=False)
+        params = data.get_all_cochain_params(max_dim=self.max_dim, include_down_features=True)
         xs = list(self.init_conv(*params))
 
         # Apply dropout on the input features
@@ -106,7 +106,7 @@ class OGBEmbedSparseCIN(torch.nn.Module):
         data.set_xs(xs)
 
         for c, conv in enumerate(self.convs):
-            params = data.get_all_cochain_params(max_dim=self.max_dim, include_down_features=False)
+            params = data.get_all_cochain_params(max_dim=self.max_dim, include_down_features=True)
             start_to_process = 0
             xs = conv(*params, start_to_process=start_to_process)
             # Apply dropout on the output of the conv layer

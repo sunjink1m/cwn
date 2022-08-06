@@ -337,6 +337,42 @@ def main(args):
                                   graph_norm=args.graph_norm,              # normalization layer
                                   readout_dims=readout_dims                # readout_dims
                                  ).to(device)
+    elif args.model == 'ogb_embed_less_sparse_cin':
+        model = OGBEmbedSparseCIN(dataset.num_tasks,                       # out_size
+                                  args.num_layers,                         # num_layers
+                                  args.emb_dim,                            # hidden
+                                  dropout_rate=args.drop_rate,             # dropout_rate
+                                  indropout_rate=args.indrop_rate,         # in-dropout_rate
+                                  max_dim=dataset.max_dim,                 # max_dim
+                                  jump_mode=args.jump_mode,                # jump_mode
+                                  nonlinearity=args.nonlinearity,          # nonlinearity
+                                  readout=args.readout,                    # readout
+                                  final_readout=args.final_readout,        # final readout
+                                  apply_dropout_before=args.drop_position, # where to apply dropout
+                                  use_coboundaries=use_coboundaries,       # whether to use coboundaries
+                                  embed_edge=args.use_edge_features,       # whether to use edge feats
+                                  graph_norm=args.graph_norm,              # normalization layer
+                                  readout_dims=readout_dims,               # readout_dims
+                                  variant='less-sparse'
+                                 ).to(device)
+    elif args.model == 'ogb_embed_dense_cin':
+        model = OGBEmbedSparseCIN(dataset.num_tasks,                       # out_size
+                                  args.num_layers,                         # num_layers
+                                  args.emb_dim,                            # hidden
+                                  dropout_rate=args.drop_rate,             # dropout_rate
+                                  indropout_rate=args.indrop_rate,         # in-dropout_rate
+                                  max_dim=dataset.max_dim,                 # max_dim
+                                  jump_mode=args.jump_mode,                # jump_mode
+                                  nonlinearity=args.nonlinearity,          # nonlinearity
+                                  readout=args.readout,                    # readout
+                                  final_readout=args.final_readout,        # final readout
+                                  apply_dropout_before=args.drop_position, # where to apply dropout
+                                  use_coboundaries=use_coboundaries,       # whether to use coboundaries
+                                  embed_edge=args.use_edge_features,       # whether to use edge feats
+                                  graph_norm=args.graph_norm,              # normalization layer
+                                  readout_dims=readout_dims,               # readout_dims
+                                  variant='dense'
+                                 ).to(device)
     else:
         raise ValueError('Invalid model type {}.'.format(args.model))
 
