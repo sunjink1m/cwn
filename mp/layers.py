@@ -481,7 +481,10 @@ class DenseCINConv(torch.nn.Module):
                  passed_update_coboundaries_nn: Optional[Callable] = None,
                  eps: float = 0., train_eps: bool = False, max_dim: int = 2,
                  graph_norm=BN, use_coboundaries=False,
-                 use_boundaries=False, variant='dense', **kwargs):
+                 use_boundaries=False, 
+                 omit_2cell_down=False,
+                 variant='dense',
+                 **kwargs):
         super(DenseCINConv, self).__init__()
         self.max_dim = max_dim
         self.mp_levels = torch.nn.ModuleList()
@@ -525,7 +528,11 @@ class DenseCINConv(torch.nn.Module):
             use_down_msg = self.use_down_msg and (not bottom_dim)
             use_boundary_msg = self.use_boundary_msg and (not bottom_dim)
             use_coboundary_msg = self.use_coboundary_msg and (not top_dim)
-
+            
+            # we can optionally omit 2-cell down adj for regularization
+            if top_dim and omit_2cell_down: 
+                use_down_msg = False
+            
             # count how many types of 'adjacencies' we are using
             num_adjs = use_up_msg + use_down_msg + use_boundary_msg + use_coboundary_msg
             

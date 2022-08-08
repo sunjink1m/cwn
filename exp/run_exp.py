@@ -109,6 +109,9 @@ def main(args):
     # Use boundary features for down-messages?
     use_boundaries = args.use_boundaries.lower() == 'true'
 
+    # Omit down adjacencies in 2nd dimension (for regularization)?
+    omit_2cell_down = args.omit_2cell_down.lower() == 'true'
+
     # Readout dimensions
     readout_dims = tuple(sorted(args.readout_dims))
 
@@ -252,6 +255,7 @@ def main(args):
                                embed_edge=args.use_edge_features,
                                graph_norm=args.graph_norm,  # normalization layer
                                readout_dims=readout_dims,  # readout_dims
+                               omit_2cell_down=omit_2cell_down,
                                variant='less-sparse'
                                ).to(device)
     elif args.model == 'embed_dense_cin':
@@ -272,6 +276,7 @@ def main(args):
                                embed_edge=args.use_edge_features,
                                graph_norm=args.graph_norm,  # normalization layer
                                readout_dims=readout_dims,  # readout_dims
+                               omit_2cell_down=omit_2cell_down,
                                variant='dense'
                                ).to(device)
     elif args.model == 'embed_sparse_deeper_ccn':
@@ -353,6 +358,7 @@ def main(args):
                                   embed_edge=args.use_edge_features,       # whether to use edge feats
                                   graph_norm=args.graph_norm,              # normalization layer
                                   readout_dims=readout_dims,               # readout_dims
+                                  omit_2cell_down=omit_2cell_down,
                                   variant='less-sparse'
                                  ).to(device)
     elif args.model == 'ogb_embed_dense_cin':
@@ -371,6 +377,7 @@ def main(args):
                                   embed_edge=args.use_edge_features,       # whether to use edge feats
                                   graph_norm=args.graph_norm,              # normalization layer
                                   readout_dims=readout_dims,               # readout_dims
+                                  omit_2cell_down=omit_2cell_down,
                                   variant='dense'
                                  ).to(device)
     else:
