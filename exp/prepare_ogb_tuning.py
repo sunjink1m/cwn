@@ -16,8 +16,15 @@ if __name__ == "__main__":
     max_ring_sizes = conf['max_ring_size']
     init_methods = conf['init_method']
     
+    include_coboundary_links = 'include_coboundary_links' in conf.keys()
+    include_down_adj = 'include_down_adj' in conf.keys()
+    use_edge_features = 'use_edge_features' in conf.keys()
+
     # build datasets is not present
     for max_dim in max_dims:
         for max_ring_size in max_ring_sizes:
             for init in init_methods:
-                _ = load_dataset(dataset, max_dim=max_dim, init_method=init, max_ring_size=max_ring_size)
+                _ = load_dataset(dataset, simple_features=False, max_dim=max_dim, init_method=init, max_ring_size=max_ring_size,
+                use_edge_features=use_edge_features, include_down_adj=include_down_adj,
+                include_coboundary_links=include_coboundary_links)
+                
