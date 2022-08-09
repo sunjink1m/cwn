@@ -1,8 +1,7 @@
 # Just a basic template that can be customised to set-up grids on OGB.
 dataset: MOLHIV
 epochs:
-    # - 150
-    - 1
+    - 150
 batch_size:
     - 128
 drop_position:
@@ -10,9 +9,10 @@ drop_position:
     # - final_readout
     # - lin1
 drop_rate:
-    - 0.0
-indrop_rate:
     - 0.1
+    - 0.5
+indrop_rate:
+    - 0.0
 graph_norm:
     - bn
 emb_dim:
@@ -25,17 +25,23 @@ init_method:
 # jump_mode: # I think most molecular models dont use jump
 #     - cat
 lr:
+    - 0.00003
+    - 0.0001
+    - 0.0003
+    - 0.001
     - 0.003
-    - 0.01
 lr_scheduler:
     - None
     # - StepLR
-# lr_scheduler_decay_rate:
-#     - 0.5
-#     - 0.9
+    - ReduceLROnPlateau
+lr_scheduler_decay_rate:
+    - 0.5
+    - 0.9
 # lr_scheduler_decay_steps:
 #     - 50
 #     - 20
+lr_scheduler_patience:
+    - 13
 max_dim:
     # If supplying a max_ring_size, max_dim should be set to 2.
     - 2
@@ -57,6 +63,7 @@ nonlinearity:
     - relu
 num_layers:
     - 2
+    - 3
 readout:
     - mean
     # Use sum for bio datasets.
@@ -75,8 +82,8 @@ eval_metric:
 start_seed:
     - 0
 stop_seed:
-    - 1
+    - 0
 # Non-tunable parameters: These indicate 'True' when present.
-include_coboundary_links:
+# include_coboundary_links: # turn this on for dense models
 include_down_adj:
 use_edge_features:
