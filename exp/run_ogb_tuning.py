@@ -53,7 +53,7 @@ if __name__ == "__main__":
     # form args
     tuning_results_folder = os.path.join(ROOT_DIR, 'exp', 'results', '{}_tuning_{}'.format(dataset, t_args.code))
     base_args = [
-        '--device', str(t_args.idx),
+        '--device', '0', # I only run these experiment on machines with 1 gpu's
         # '--task_type', 'classification', <- specified in yaml
         # '--eval_metric', 'accuracy', <- specified in yaml
         '--dataset', dataset,
