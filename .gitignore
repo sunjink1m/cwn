@@ -136,6 +136,7 @@ dmypy.json
 
 
 *.gz
-exp/results/
+# exp/results/
+exp/results/**/*.pkl
 *.pt
 
