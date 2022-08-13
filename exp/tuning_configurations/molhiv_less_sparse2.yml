@@ -50,7 +50,7 @@ max_ring_size:
     # - 8
     # - 18
 model:
-    - ogb_embed_dense_cin
+    - ogb_embed_less_sparse_cin
 use_coboundaries:
     - True
 use_boundaries:
@@ -86,6 +86,6 @@ start_seed:
 stop_seed:
     - 5
 # Non-tunable parameters: These indicate 'True' when present.
-include_coboundary_links: # turn this on for dense models
+# include_coboundary_links: # turn this on for dense models
 include_down_adj:
 use_edge_features:

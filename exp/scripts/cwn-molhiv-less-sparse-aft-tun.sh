@@ -4,7 +4,7 @@ python -m exp.run_mol_exp \
   --device 0 \
   --start_seed 0 \
   --stop_seed 9 \
-  --exp_name cwn-molhiv-less-sparse \
+  --exp_name cwn-molhiv-less-sparse-aft-tun \
   --dataset MOLHIV \
   --model ogb_embed_less_sparse_cin \
   --use_coboundaries True \

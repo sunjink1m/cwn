@@ -48,7 +48,7 @@ if __name__ == "__main__":
     for h, hypers in enumerate(grid):
         if h % __max_devices__ == (t_args.idx % __max_devices__):
             exp_queue.append((h, hypers))
-    print(f"{len(exp_queue)} of them will ne run in this idx.")
+    print(f"{len(exp_queue)} of them will be run in this idx.")
 
     # form args
     tuning_results_folder = os.path.join(ROOT_DIR, 'exp', 'results', '{}_tuning_{}'.format(dataset, t_args.code))
