@@ -641,7 +641,8 @@ class Complex(object):
             all_params.append(self.get_cochain_params(dim, max_dim=max_dim,
                                                     include_top_features=include_top_features,
                                                     include_down_features=include_down_features,
-                                                    include_boundary_features=include_boundary_features))
+                                                    include_boundary_features=include_boundary_features,
+                                                    include_coboundary_features=include_coboundary_features))
         return all_params
 
     def get_labels(self, dim=None):
