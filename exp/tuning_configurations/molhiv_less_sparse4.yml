@@ -1,0 +1,91 @@
+# Just a basic template that can be customised to set-up grids on OGB.
+dataset: MOLHIV
+epochs:
+    - 150
+batch_size:
+    - 128
+drop_position:
+    - lin2
+    # - final_readout
+    # - lin1
+drop_rate:
+    # - 0.1
+    - 0.5
+indrop_rate:
+    - 0.0
+graph_norm:
+    - bn
+emb_dim:
+    - 64
+final_readout:
+    - sum
+init_method:
+    - sum
+    # - mean
+# jump_mode: # I think most molecular models dont use jump
+#     - cat
+lr:
+    # - 0.00001
+    - 0.00003
+    # - 0.0001
+    # - 0.0003
+lr_scheduler:
+    - None
+    # - StepLR
+    # - ReduceLROnPlateau
+# lr_scheduler_decay_rate:
+    # - 0.5
+    # - 0.9
+# lr_scheduler_decay_steps:
+#     - 50
+#     - 20
+# lr_scheduler_patience:
+#     - 13
+max_dim:
+    # If supplying a max_ring_size, max_dim should be set to 2.
+    - 2
+max_ring_size:
+    # Remove this one if you want to tune an MPSN.
+    - 6
+    # - 8
+    # - 18
+model:
+    - ogb_embed_less_sparse_cin
+use_coboundaries:
+    - True
+use_boundaries:
+    - False
+omit_2cell_down: # omit down adjacencies between 2-cells, for regularization
+    # - True
+    - False
+nonlinearity:
+    - relu
+num_layers:
+    # - 2
+    # - 3
+    - 4
+    - 5
+    # - 6
+readout:
+    - mean
+    # Use sum for bio datasets.
+    # - sum
+train_eval_period:
+    - 10
+num_workers:
+    - 0
+preproc_jobs:
+    - 10
+task_type:
+    - bin_classification
+eval_metric:
+    - ogbg-molhiv
+# Things that should stay the same
+start_seed:
+    - 0
+stop_seed:
+    - 14
+# Non-tunable parameters: These indicate 'True' when present.
+# include_coboundary_links: # turn this on for dense models
+include_down_adj:
+use_edge_features:
