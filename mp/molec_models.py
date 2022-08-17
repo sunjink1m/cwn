@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from torch.nn import Linear, Embedding, Sequential, BatchNorm1d as BN
 from torch_geometric.nn import JumpingKnowledge, GINEConv
 from mp.layers import (InitReduceConv, EmbedVEWithReduce, OGBEmbedVEWithReduce,
-                       DenseCINConv, SparseDeeperCCNConv, SparseNormLayer)
+                       DenseCINConv, SparseDeeperCCNConv, NormLayer)
 from ogb.graphproppred.mol_encoder import AtomEncoder, BondEncoder
 from data.complex import ComplexBatch
 from mp.nn import pool_complex, get_pooling_fn, get_nonlinearity, get_graph_norm
@@ -25,6 +25,7 @@ class OGBEmbedSparseCIN(torch.nn.Module):
                  readout_dims=(0, 1, 2), final_readout='sum', apply_dropout_before='lin2',
                  init_reduce='sum', embed_edge=False, embed_dim=None, use_coboundaries=False,
                  graph_norm='bn', omit_2cell_down=False, variant='sparse'):
+        breakpoint()
         super(OGBEmbedSparseCIN, self).__init__()
 
         self.max_dim = max_dim
@@ -601,7 +602,7 @@ class EmbedSparseDeeperCCN(torch.nn.Module):
             self.convs.append(
                 SparseDeeperCCNConv(up_msg_size=layer_dim, down_msg_size=layer_dim,
                     boundary_msg_size=layer_dim, max_dim=self.max_dim))
-            self.norms.append(SparseNormLayer(hidden_sizes=[layer_dim]*(max_dim+1),
+            self.norms.append(NormLayer(hidden_sizes=[layer_dim]*(max_dim+1),
                                                 norm_type=graph_norm, max_dim=self.max_dim))
         self.jump = JumpingKnowledge(jump_mode) if jump_mode is not None else None
         self.lin1s = torch.nn.ModuleList()

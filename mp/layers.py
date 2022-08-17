@@ -770,13 +770,13 @@ class SparseDeeperCCNConv(torch.nn.Module):
         return out
 
 
-class SparseNormLayer(torch.nn.Module):
+class NormLayer(torch.nn.Module):
     """Performs normalization (batch norm, layer norm, etc)
     based on: https://github.com/lightaime/deep_gcns_torch/blob/751382aa2d25e25a2792c133cc99f8cfddae0657/gcn_lib/sparse/torch_nn.py#L23
     """
 
     def __init__(self, hidden_sizes: List[int], norm_type: str ='batch', max_dim: int = 2, **kwargs):
-        super(SparseNormLayer, self).__init__()
+        super(NormLayer, self).__init__()
         assert max_dim+1==len(hidden_sizes), "You must provide the hidden size for each dimension!"
         self.max_dim = max_dim
         self.norm_layers = torch.nn.ModuleList()
