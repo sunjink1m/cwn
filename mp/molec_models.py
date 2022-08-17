@@ -24,6 +24,7 @@ class OGBEmbedSparseCIN(torch.nn.Module):
                  nonlinearity='relu', readout='sum', train_eps=False, final_hidden_multiplier: int = 2,
                  readout_dims=(0, 1, 2), final_readout='sum', apply_dropout_before='lin2',
                  init_reduce='sum', embed_edge=False, embed_dim=None, use_coboundaries=False,
+                 use_boundaries=False,
                  graph_norm='bn', omit_2cell_down=False, variant='sparse'):
         breakpoint()
         super(OGBEmbedSparseCIN, self).__init__()
@@ -58,11 +59,13 @@ class OGBEmbedSparseCIN(torch.nn.Module):
             layer_dim = embed_dim if i == 0 else hidden
             self.convs.append(
                 DenseCINConv(up_msg_size=layer_dim, down_msg_size=layer_dim,
+                    coboundary_msg_size=layer_dim,
                     boundary_msg_size=layer_dim, passed_msg_boundaries_nn=None,
                     passed_msg_up_nn=None, passed_update_up_nn=None,
                     passed_update_boundaries_nn=None, train_eps=train_eps, max_dim=self.max_dim,
                     hidden=hidden, act_module=act_module, layer_dim=layer_dim,
                     graph_norm=self.graph_norm, use_coboundaries=use_coboundaries, 
+                    use_boundaries=use_boundaries, 
                     omit_2cell_down=omit_2cell_down, variant=variant))
         self.jump = JumpingKnowledge(jump_mode) if jump_mode is not None else None
         self.lin1s = torch.nn.ModuleList()

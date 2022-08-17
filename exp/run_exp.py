@@ -338,9 +338,11 @@ def main(args):
                                   final_readout=args.final_readout,        # final readout
                                   apply_dropout_before=args.drop_position, # where to apply dropout
                                   use_coboundaries=use_coboundaries,       # whether to use coboundaries
+                                  use_boundaries=use_boundaries,           # whether to use boundaries
                                   embed_edge=args.use_edge_features,       # whether to use edge feats
                                   graph_norm=args.graph_norm,              # normalization layer
-                                  readout_dims=readout_dims                # readout_dims
+                                  readout_dims=readout_dims,               # readout_dims
+                                  variant='sparse'
                                  ).to(device)
     elif args.model == 'ogb_embed_less_sparse_cin':
         model = OGBEmbedSparseCIN(dataset.num_tasks,                       # out_size
@@ -355,6 +357,7 @@ def main(args):
                                   final_readout=args.final_readout,        # final readout
                                   apply_dropout_before=args.drop_position, # where to apply dropout
                                   use_coboundaries=use_coboundaries,       # whether to use coboundaries
+                                  use_boundaries=use_boundaries,           # whether to use boundaries
                                   embed_edge=args.use_edge_features,       # whether to use edge feats
                                   graph_norm=args.graph_norm,              # normalization layer
                                   readout_dims=readout_dims,               # readout_dims
@@ -374,6 +377,7 @@ def main(args):
                                   final_readout=args.final_readout,        # final readout
                                   apply_dropout_before=args.drop_position, # where to apply dropout
                                   use_coboundaries=use_coboundaries,       # whether to use coboundaries
+                                  use_boundaries=use_boundaries,           # whether to use boundaries
                                   embed_edge=args.use_edge_features,       # whether to use edge feats
                                   graph_norm=args.graph_norm,              # normalization layer
                                   readout_dims=readout_dims,               # readout_dims
