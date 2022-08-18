@@ -26,7 +26,6 @@ class OGBEmbedSparseCIN(torch.nn.Module):
                  init_reduce='sum', embed_edge=False, embed_dim=None, use_coboundaries=False,
                  use_boundaries=False,
                  graph_norm='bn', omit_2cell_down=False, variant='sparse'):
-        breakpoint()
         super(OGBEmbedSparseCIN, self).__init__()
 
         self.max_dim = max_dim
