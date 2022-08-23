@@ -27,8 +27,10 @@ init_method:
 lr:
     # - 0.00001
     # - 0.00003
-    - 0.0001
+    # - 0.0001
     - 0.0003
+    - 0.001
+    - 0.003
 lr_scheduler:
     - None
     # - StepLR
@@ -54,7 +56,7 @@ model:
 use_coboundaries:
     - True
 use_boundaries:
-    - False
+    - True
 omit_2cell_down: # omit down adjacencies between 2-cells, for regularization
     # - True
     - False
@@ -64,7 +66,7 @@ num_layers:
     # - 2
     - 3
     - 4
-    # - 5
+    - 5
     - 6
 readout:
     - mean
