@@ -13,7 +13,7 @@ is_done = {}
 while True:
     not_done = True
 
-    for i in [5,6,7,8,9]:
+    for i in [5,6,7]:
         results_dir = os.path.join(tuning_results_folder, f'MOLHIV-{i}/result.txt')
         if Path(results_dir).is_file():
             print(f'{i} done')
