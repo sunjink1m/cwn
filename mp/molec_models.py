@@ -10,9 +10,13 @@ from data.complex import ComplexBatch
 from mp.nn import pool_complex, get_pooling_fn, get_nonlinearity, get_graph_norm
 
 
-class OGBEmbedSparseCIN(torch.nn.Module):
+class OGBEmbedCWN(torch.nn.Module):
     """
-    A cellular version of GIN with some tailoring to nimbly work on molecules from the ogbg-mol* dataset.
+    When conv_type is not specified, this is a CIN, which is a cellular version of GIN.
+    When conv_type is set to DenseBasicConv, this can act as a Basic CWN (based on 
+    Basic GNN from Graph Representation Learning by W L Hamilton)
+
+    Pluse, this class has some tailoring to nimbly work on molecules from the ogbg-mol* dataset.
     It uses OGB atom and bond encoders.
 
     This model is based on
@@ -25,8 +29,8 @@ class OGBEmbedSparseCIN(torch.nn.Module):
                  readout_dims=(0, 1, 2), final_readout='sum', apply_dropout_before='lin2',
                  init_reduce='sum', embed_edge=False, embed_dim=None, use_coboundaries=False,
                  use_boundaries=False,
-                 graph_norm='bn', omit_2cell_down=False, variant='sparse'):
-        super(OGBEmbedSparseCIN, self).__init__()
+                 graph_norm='bn', omit_2cell_down=False, variant='sparse', conv_type=DenseCINConv):
+        super(OGBEmbedCWN, self).__init__()
 
         self.max_dim = max_dim
         if readout_dims is not None:
@@ -57,7 +61,7 @@ class OGBEmbedSparseCIN(torch.nn.Module):
         for i in range(num_layers):
             layer_dim = embed_dim if i == 0 else hidden
             self.convs.append(
-                DenseCINConv(up_msg_size=layer_dim, down_msg_size=layer_dim,
+                conv_type(up_msg_size=layer_dim, down_msg_size=layer_dim,
                     coboundary_msg_size=layer_dim,
                     boundary_msg_size=layer_dim, passed_msg_boundaries_nn=None,
                     passed_msg_up_nn=None, passed_update_up_nn=None,

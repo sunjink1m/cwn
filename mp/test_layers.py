@@ -5,7 +5,7 @@ import torch.optim as optim
 from mp.nn import get_nonlinearity, get_graph_norm
 from mp.layers import (
     DummyCellularMessagePassing, CINConv, OrientedConv, InitReduceConv, EmbedVEWithReduce,  DenseCINConv, 
-    SparseDeeperCCNConv)
+    DenseBasicConv, SparseDeeperCCNConv)
 from data.dummy_complexes import get_house_complex, get_molecular_complex, get_bridged_complex, get_filled_square_complex
 from torch import nn
 from data.datasets.flow import load_flow_dataset
@@ -335,55 +335,155 @@ def test_dense_cin_conv_training():
     for i, _ in enumerate(all_inactive_params_before):
         assert torch.equal(all_inactive_params_before[i], all_inactive_params_after[i])
 
-# def test_deeper_ccn_conv_training():
-#     '''
 
-#     '''
-#     house_complex = get_house_complex(include_coboundary_links=True)
-#     molecular_complex = get_molecular_complex(include_coboundary_links=True)
-#     bridged_complex = get_bridged_complex()
-#     filled_square = get_filled_square_complex()
+def test_dense_basic_conv_training():
+    '''
+    This testmakes sure the layers that should be used gets used and ones that 
+    shouldn't aren't being used.
+    
+    (For example, down-adjacency-message-passing neural network is not used in 
+    the 0th dimension because there are no down-adjacencies in the 0th dimension)
 
-#     batch = ComplexBatch.from_complex_list([house_complex, molecular_complex, bridged_complex, filled_square])
+    It does this by doing one backpropagation step and seeing which parameters 
+    have changed.
 
-#     v_params = batch.get_cochain_params(dim=0, include_coboundary_features=True)
-#     e_params = batch.get_cochain_params(dim=1, include_coboundary_features=True)
-#     t_params = batch.get_cochain_params(dim=2, include_coboundary_features=True)
+    Therefore this test makes sure cellular message passing is working properly.
+    '''
+    house_complex = get_house_complex(include_coboundary_links=True)
+    molecular_complex = get_molecular_complex(include_coboundary_links=True)
+    bridged_complex = get_bridged_complex()
+    filled_square = get_filled_square_complex()
 
-#     yv = batch.get_labels(dim=0)
-#     ye = batch.get_labels(dim=1)
-#     yt = batch.get_labels(dim=2)
-#     y = torch.cat([yv, ye, yt])
+    batch = ComplexBatch.from_complex_list([house_complex, molecular_complex, bridged_complex, filled_square])
+
+    v_params = batch.get_cochain_params(dim=0, include_coboundary_features=True)
+    e_params = batch.get_cochain_params(dim=1, include_coboundary_features=True)
+    t_params = batch.get_cochain_params(dim=2, include_coboundary_features=True)
+
+    yv = batch.get_labels(dim=0)
+    ye = batch.get_labels(dim=1)
+    yt = batch.get_labels(dim=2)
+    y = torch.cat([yv, ye, yt])
+
+
+    conv = DenseBasicConv(up_msg_size=1, 
+                        down_msg_size=1,
+                        boundary_msg_size=1,
+                        coboundary_msg_size=1, 
+                        passed_msg_up_nn=None,
+                        passed_msg_down_nn=None,
+                        passed_msg_boundaries_nn=None,
+                        passed_msg_coboundaries_nn=None,
+                        passed_update_up_nn=None,
+                        passed_update_down_nn=None,
+                        passed_update_coboundaries_nn=None,
+                        passed_update_boundaries_nn=None,
+                        train_eps=True,
+                        hidden=3, 
+                        act_module=get_nonlinearity('id', return_module=True), 
+                        layer_dim=1,
+                        graph_norm=get_graph_norm('id'), 
+                        use_coboundaries=True,
+                        use_boundaries=True)
+
+
+    # these linear layers should be used during forward calculation
+    active_layers = [
+                    conv.mp_levels[0].msg_up_nn,
+                    conv.mp_levels[0].msg_coboundaries_nn,
+
+                    conv.mp_levels[1].msg_up_nn,
+                    conv.mp_levels[1].msg_coboundaries_nn,
+                    conv.mp_levels[1].msg_down_nn,
+                    conv.mp_levels[1].msg_boundaries_nn,
+                    
+                    conv.mp_levels[2].msg_down_nn,
+                    conv.mp_levels[2].msg_boundaries_nn,
+
+                    conv.mp_levels[0].combine_nn,
+                    conv.mp_levels[1].combine_nn,
+                    conv.mp_levels[2].combine_nn
+                    ]
+    
+    # these linear layers should ignored during forward calculation
+    inactive_layers = [
+                    conv.mp_levels[0].msg_down_nn,
+                    conv.mp_levels[0].msg_boundaries_nn,
+                    # conv.mp_levels[0].update_down_nn, # <- so apparently all the update nn's get used anyways, 
+                                                        # even if the corresponding adjacencies don't exist
+                                                        # because we add (1+eps)*cochain.x to a zero vector 
+                                                        # that came out of .propagate and send it into the 
+                                                        # update nn
+                    # conv.mp_levels[0].update_boundaries_nn,
+
+                    conv.mp_levels[2].msg_up_nn,
+                    conv.mp_levels[2].msg_coboundaries_nn,
+                    # conv.mp_levels[2].update_up_nn,
+                    # conv.mp_levels[2].update_coboundaries_nn,
+                    ]
+
+    # this list stores the values of the initial weights
+    all_active_params_before = []
+    # this list keeps track of which layers the weights come from
+    for layer in active_layers:
+        try:
+            for parameter in layer.parameters():
+                all_active_params_before.append(parameter.clone().data)
+        except:
+            print(f'{layer} is not a nn.Module')
+    assert len(all_active_params_before) > 0
+
+    all_inactive_params_before = []
+    for layer in inactive_layers:
+        try:
+            for parameter in layer.parameters():
+                all_inactive_params_before.append(parameter.clone().data)
+        except:
+            print(f'{layer} is not a nn.Module')
+    assert len(all_inactive_params_before) == 0 # we have removed all redundant 
+                                                # parameters from DenseCINConv
 
 
 
-#     conv = SparseDeeperCCNConv(up_msg_size=1, 
-#                         down_msg_size=1,
-#                         boundary_msg_size=1,
-#                         max_dim=2,)
+    optimizer = optim.SGD(conv.parameters(), lr=10.)
+    optimizer.zero_grad()
+
+    out_v, out_e, out_t = conv.forward(v_params, e_params, t_params)
+    out = torch.cat([out_v, out_e, out_t], dim=0).squeeze(1)
+
+    criterion = nn.CrossEntropyLoss()
+    # loss = criterion(out, y)
+    loss = criterion(out, y)
+
+    loss.backward()
+    optimizer.step()
 
 
 
-#     all_params_before = []
-#     for p in conv.parameters():
-#         all_params_before.append(p.clone().data)
-#     assert len(all_params_before) > 0
+    all_active_params_after = []
+    for layer in active_layers:
+        try:
+            for parameter in layer.parameters():
+                all_active_params_after.append(parameter.clone().data)
+        except:
+            print(f'{layer} is not a nn.Module')
+    assert len(all_active_params_after) > 0
 
-#     optimizer = optim.SGD(conv.parameters(), lr=10.0)
-#     optimizer.zero_grad()
+    all_inactive_params_after = []
+    for layer in inactive_layers:
+        try:
+            for parameter in layer.parameters():
+                all_inactive_params_after.append(parameter.clone().data)
+        except:
+            print(f'{layer} is not a nn.Module')
+    assert len(all_inactive_params_after) == 0
 
-#     out_v, out_e, out_t = conv.forward(v_params, e_params, t_params)
-#     out = torch.cat([out_v, out_e, out_t], dim=0).squeeze(1)
+    asdf = [all_active_params_before[i]==all_active_params_after[i] for i in range(len(all_active_params_before))]
+    asdf2 = [all_inactive_params_before[i]==all_inactive_params_after[i] for i in range(len(all_inactive_params_before))]
+    # Check that parameters have been updated.
+    for i, _ in enumerate(all_active_params_before):
+        assert not torch.equal(all_active_params_before[i], all_active_params_after[i])
 
-#     loss = (out-y).square().sum()
-#     loss.backward()
-#     optimizer.step()
-
-#     all_params_after = []
-#     for p in conv.parameters():
-#         all_params_after.append(p.clone().data)
-#     assert len(all_params_after) == len(all_params_before)
-
-#     # Check that parameters have been updated.
-#     for i, _ in enumerate(all_params_before):
-#         assert not torch.equal(all_params_before[i], all_params_after[i])
+    # Check inactive layers have not been updated
+    for i, _ in enumerate(all_inactive_params_before):
+        assert torch.equal(all_inactive_params_before[i], all_inactive_params_after[i])
