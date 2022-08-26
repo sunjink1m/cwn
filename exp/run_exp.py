@@ -12,8 +12,9 @@ from exp.train_utils import train, eval, Evaluator
 from exp.parser import get_parser, validate_args
 from mp.graph_models import GIN0, GINWithJK
 from mp.models import CIN0, Dummy, SparseCIN, EdgeOrient, EdgeMPNN, MessagePassingAgnostic
-from mp.molec_models import (OGBEmbedSparseCIN, EmbedSparseCINNoRings,
+from mp.molec_models import (OGBEmbedCWN, EmbedSparseCINNoRings,
                          EmbedGIN, EmbedDenseCIN, EmbedSparseDeeperCCN)
+from mp.layers import (DenseBasicConv)
 from mp.ring_exp_models import RingSparseCIN, RingGIN
 
 
@@ -326,7 +327,7 @@ def main(args):
         ).to(device)
     # TODO: handle this as above
     elif args.model == 'ogb_embed_sparse_cin':
-        model = OGBEmbedSparseCIN(dataset.num_tasks,                       # out_size
+        model = OGBEmbedCWN(dataset.num_tasks,                             # out_size
                                   args.num_layers,                         # num_layers
                                   args.emb_dim,                            # hidden
                                   dropout_rate=args.drop_rate,             # dropout_rate
@@ -345,7 +346,7 @@ def main(args):
                                   variant='sparse'
                                  ).to(device)
     elif args.model == 'ogb_embed_less_sparse_cin':
-        model = OGBEmbedSparseCIN(dataset.num_tasks,                       # out_size
+        model = OGBEmbedCWN(dataset.num_tasks,                             # out_size
                                   args.num_layers,                         # num_layers
                                   args.emb_dim,                            # hidden
                                   dropout_rate=args.drop_rate,             # dropout_rate
@@ -365,7 +366,7 @@ def main(args):
                                   variant='less-sparse'
                                  ).to(device)
     elif args.model == 'ogb_embed_dense_cin':
-        model = OGBEmbedSparseCIN(dataset.num_tasks,                       # out_size
+        model = OGBEmbedCWN(dataset.num_tasks,                             # out_size
                                   args.num_layers,                         # num_layers
                                   args.emb_dim,                            # hidden
                                   dropout_rate=args.drop_rate,             # dropout_rate
@@ -383,6 +384,68 @@ def main(args):
                                   readout_dims=readout_dims,               # readout_dims
                                   omit_2cell_down=omit_2cell_down,
                                   variant='dense'
+                                 ).to(device)
+    elif args.model == 'ogb_embed_sparse_basic':
+        model = OGBEmbedCWN(dataset.num_tasks,                       # out_size
+                                  args.num_layers,                         # num_layers
+                                  args.emb_dim,                            # hidden
+                                  dropout_rate=args.drop_rate,             # dropout_rate
+                                  indropout_rate=args.indrop_rate,         # in-dropout_rate
+                                  max_dim=dataset.max_dim,                 # max_dim
+                                  jump_mode=args.jump_mode,                # jump_mode
+                                  nonlinearity=args.nonlinearity,          # nonlinearity
+                                  readout=args.readout,                    # readout
+                                  final_readout=args.final_readout,        # final readout
+                                  apply_dropout_before=args.drop_position, # where to apply dropout
+                                  use_coboundaries=use_coboundaries,       # whether to use coboundaries
+                                  use_boundaries=use_boundaries,           # whether to use boundaries
+                                  embed_edge=args.use_edge_features,       # whether to use edge feats
+                                  graph_norm=args.graph_norm,              # normalization layer
+                                  readout_dims=readout_dims,               # readout_dims
+                                  variant='sparse',
+                                  conv_type=DenseBasicConv
+                                 ).to(device)
+    elif args.model == 'ogb_embed_less_sparse_basic':
+        model = OGBEmbedCWN(dataset.num_tasks,                       # out_size
+                                  args.num_layers,                         # num_layers
+                                  args.emb_dim,                            # hidden
+                                  dropout_rate=args.drop_rate,             # dropout_rate
+                                  indropout_rate=args.indrop_rate,         # in-dropout_rate
+                                  max_dim=dataset.max_dim,                 # max_dim
+                                  jump_mode=args.jump_mode,                # jump_mode
+                                  nonlinearity=args.nonlinearity,          # nonlinearity
+                                  readout=args.readout,                    # readout
+                                  final_readout=args.final_readout,        # final readout
+                                  apply_dropout_before=args.drop_position, # where to apply dropout
+                                  use_coboundaries=use_coboundaries,       # whether to use coboundaries
+                                  use_boundaries=use_boundaries,           # whether to use boundaries
+                                  embed_edge=args.use_edge_features,       # whether to use edge feats
+                                  graph_norm=args.graph_norm,              # normalization layer
+                                  readout_dims=readout_dims,               # readout_dims
+                                  omit_2cell_down=omit_2cell_down,
+                                  variant='less-sparse',
+                                  conv_type=DenseBasicConv
+                                 ).to(device)
+    elif args.model == 'ogb_embed_dense_basic':
+        model = OGBEmbedCWN(dataset.num_tasks,                       # out_size
+                                  args.num_layers,                         # num_layers
+                                  args.emb_dim,                            # hidden
+                                  dropout_rate=args.drop_rate,             # dropout_rate
+                                  indropout_rate=args.indrop_rate,         # in-dropout_rate
+                                  max_dim=dataset.max_dim,                 # max_dim
+                                  jump_mode=args.jump_mode,                # jump_mode
+                                  nonlinearity=args.nonlinearity,          # nonlinearity
+                                  readout=args.readout,                    # readout
+                                  final_readout=args.final_readout,        # final readout
+                                  apply_dropout_before=args.drop_position, # where to apply dropout
+                                  use_coboundaries=use_coboundaries,       # whether to use coboundaries
+                                  use_boundaries=use_boundaries,           # whether to use boundaries
+                                  embed_edge=args.use_edge_features,       # whether to use edge feats
+                                  graph_norm=args.graph_norm,              # normalization layer
+                                  readout_dims=readout_dims,               # readout_dims
+                                  omit_2cell_down=omit_2cell_down,
+                                  variant='dense',
+                                  conv_type=DenseBasicConv
                                  ).to(device)
     else:
         raise ValueError('Invalid model type {}.'.format(args.model))

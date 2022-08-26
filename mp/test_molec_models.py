@@ -4,8 +4,9 @@ import pytest
 
 from data.complex import ComplexBatch
 from data.dummy_complexes import get_testing_complex_list
-from mp.molec_models import (OGBEmbedSparseCIN, EmbedSparseCINNoRings, 
+from mp.molec_models import (OGBEmbedCWN, EmbedSparseCINNoRings, 
                             EmbedGIN, EmbedDenseCIN, EmbedSparseDeeperCCN)
+from mp.layers import DenseBasicConv
 from data.data_loading import DataLoader, load_dataset
 
 
@@ -204,7 +205,7 @@ def test_molec_models_with_batching_on_proteins(model):
                 print(key, torch.max(torch.abs(unbatched_res[key] - batched_res[key]))))
 
 
-@pytest.mark.parametrize("model", ['ogbsparse','sparse', 'lesssparse','zincdensecin'])
+@pytest.mark.parametrize("model", ['ogbsparse', 'ogbbasic', 'sparse', 'lesssparse','zincdensecin'])
 def test_molec_models_with_batching(model):
     """Check this runs without errors and that batching and no batching produce the same output."""
     data_list = get_testing_complex_list()
@@ -220,8 +221,11 @@ def test_molec_models_with_batching(model):
 
         data_loader = DataLoader(data_list, batch_size=batch_size, max_dim=batch_max_dim)
         if model=='ogbsparse':
-            model = OGBEmbedSparseCIN(out_size=3, num_layers=3, hidden=5,
+            model = OGBEmbedCWN(out_size=3, num_layers=3, hidden=5,
                                     jump_mode=None, max_dim=model_max_dim)
+        elif model=='ogbbasic':
+            model = OGBEmbedCWN(out_size=3, num_layers=3, hidden=5,
+                                    jump_mode=None, max_dim=model_max_dim, conv_type=DenseBasicConv)
         elif model=='sparse':
             model = EmbedDenseCIN(atom_types=32, bond_types=4, out_size=3, num_layers=3, hidden=5,
                                 jump_mode='cat', max_dim=model_max_dim, variant='sparse')

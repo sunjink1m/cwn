@@ -5,7 +5,7 @@ import torch.optim as optim
 from mp.nn import get_nonlinearity, get_graph_norm
 from mp.layers import (
     DummyCellularMessagePassing, CINConv, OrientedConv, InitReduceConv, EmbedVEWithReduce,  DenseCINConv, 
-    SparseDeeperCCNConv)
+    DenseBasicConv, SparseDeeperCCNConv)
 from data.dummy_complexes import get_house_complex, get_molecular_complex, get_bridged_complex, get_filled_square_complex
 from torch import nn
 from data.datasets.flow import load_flow_dataset
@@ -336,7 +336,7 @@ def test_dense_cin_conv_training():
         assert torch.equal(all_inactive_params_before[i], all_inactive_params_after[i])
 
 
-def test_dense_cin_conv_training():
+def test_dense_basic_conv_training():
     '''
     This testmakes sure the layers that should be used gets used and ones that 
     shouldn't aren't being used.
@@ -366,7 +366,7 @@ def test_dense_cin_conv_training():
     y = torch.cat([yv, ye, yt])
 
 
-    conv = DenseCINConv(up_msg_size=1, 
+    conv = DenseBasicConv(up_msg_size=1, 
                         down_msg_size=1,
                         boundary_msg_size=1,
                         coboundary_msg_size=1, 
@@ -391,22 +391,18 @@ def test_dense_cin_conv_training():
     active_layers = [
                     conv.mp_levels[0].msg_up_nn,
                     conv.mp_levels[0].msg_coboundaries_nn,
-                    conv.mp_levels[0].update_up_nn,
-                    conv.mp_levels[0].update_coboundaries_nn,
 
                     conv.mp_levels[1].msg_up_nn,
                     conv.mp_levels[1].msg_coboundaries_nn,
-                    conv.mp_levels[1].update_up_nn,
-                    conv.mp_levels[1].update_coboundaries_nn,
                     conv.mp_levels[1].msg_down_nn,
                     conv.mp_levels[1].msg_boundaries_nn,
-                    conv.mp_levels[1].update_down_nn,
-                    conv.mp_levels[1].update_boundaries_nn,
                     
                     conv.mp_levels[2].msg_down_nn,
                     conv.mp_levels[2].msg_boundaries_nn,
-                    conv.mp_levels[2].update_down_nn,
-                    conv.mp_levels[2].update_boundaries_nn,
+
+                    conv.mp_levels[0].combine_nn,
+                    conv.mp_levels[1].combine_nn,
+                    conv.mp_levels[2].combine_nn
                     ]
     
     # these linear layers should ignored during forward calculation

@@ -810,7 +810,7 @@ class NormLayer(torch.nn.Module):
         return layer
 
 
-class DenseCINCochainConv(CochainMessagePassing):
+class DenseBasicCochainConv(CochainMessagePassing):
     """This is a CIN Cochain layer that operates of upper adjacent cells,
     lower adjacent cells, boundary, and coboundaries.
     
@@ -846,7 +846,7 @@ class DenseCINCochainConv(CochainMessagePassing):
         # TODO: add bunch of asserts here so that the nn's and the msg_sizes 
         # we need to use are not None!
 
-        super(DenseCINCochainConv, self).__init__(up_msg_size, down_msg_size, boundary_msg_size=boundary_msg_size,
+        super(DenseBasicCochainConv, self).__init__(up_msg_size, down_msg_size, boundary_msg_size=boundary_msg_size,
                                                 coboundary_msg_size=coboundary_msg_size,
                                                 use_up_msg=self.use_up_msg,
                                                 use_down_msg=self.use_down_msg,
@@ -893,21 +893,21 @@ class DenseCINCochainConv(CochainMessagePassing):
                                                 coboundary_attr=cochain.kwargs['coboundary_attr']
                                                 )
 
-        # As in GIN, we can learn an injective update function for each multi-set
-        out_up += (1 + self.eps1) * cochain.x if self.use_up_msg else 0.
-        out_down += (1 + self.eps2) * cochain.x if self.use_down_msg else 0.
-        out_boundaries += (1 + self.eps3) * cochain.x if self.use_boundary_msg else 0.
-        out_coboundaries += (1 + self.eps4) * cochain.x if self.use_coboundary_msg else 0.
+        # # As in GIN, we can learn an injective update function for each multi-set
+        # out_up += (1 + self.eps1) * cochain.x if self.use_up_msg else 0.
+        # out_down += (1 + self.eps2) * cochain.x if self.use_down_msg else 0.
+        # out_boundaries += (1 + self.eps3) * cochain.x if self.use_boundary_msg else 0.
+        # out_coboundaries += (1 + self.eps4) * cochain.x if self.use_coboundary_msg else 0.
 
-        out_up = self.update_up_nn(out_up) if self.use_up_msg else None
-        out_down = self.update_down_nn(out_down) if self.use_down_msg else None
-        out_boundaries = self.update_boundaries_nn(out_boundaries) if self.use_boundary_msg else None
-        out_coboundaries = self.update_coboundaries_nn(out_coboundaries) if self.use_coboundary_msg else None
+        # out_up = self.update_up_nn(out_up) if self.use_up_msg else None
+        # out_down = self.update_down_nn(out_down) if self.use_down_msg else None
+        # out_boundaries = self.update_boundaries_nn(out_boundaries) if self.use_boundary_msg else None
+        # out_coboundaries = self.update_coboundaries_nn(out_coboundaries) if self.use_coboundary_msg else None
 
         # We need to combine the two such that the output is injective
         # Because the cross product of countable spaces is countable, then such a function exists.
         # And we can learn it with another MLP.
-        outs_list = []
+        outs_list = [cochain.x]
         outs_list += [out_up] if self.use_up_msg else []
         outs_list += [out_down] if self.use_down_msg else []
         outs_list += [out_boundaries] if self.use_boundary_msg else []
@@ -945,7 +945,7 @@ class DenseCINCochainConv(CochainMessagePassing):
         return self.msg_coboundaries_nn(coboundary_x_j)
     
  
-class DenseCINConv(torch.nn.Module):
+class DenseBasicConv(torch.nn.Module):
     """A cellular version of GIN which performs message passing from cellular upper
     neighbors, cellular lower neighbors, boundaries, and boundaries.
     """
@@ -969,7 +969,7 @@ class DenseCINConv(torch.nn.Module):
                  omit_2cell_down=False,
                  variant='dense',
                  **kwargs):
-        super(DenseCINConv, self).__init__()
+        super(DenseBasicConv, self).__init__()
         self.max_dim = max_dim
         self.mp_levels = torch.nn.ModuleList()
 
@@ -1050,54 +1050,32 @@ class DenseCINConv(torch.nn.Module):
 
             update_up_nn = passed_update_up_nn
             if update_up_nn is None:
-                update_up_nn = Sequential(
-                    Linear(kwargs['layer_dim'], kwargs['hidden']),
-                    graph_norm(kwargs['hidden']),
-                    kwargs['act_module'](),
-                    Linear(kwargs['hidden'], kwargs['hidden']),
-                    graph_norm(kwargs['hidden']),
-                    kwargs['act_module']()
-                )
+                update_up_nn = Identity()
 
             update_down_nn = passed_update_down_nn
             if update_down_nn is None:
-                update_down_nn = Sequential(
-                    Linear(kwargs['layer_dim'], kwargs['hidden']),
-                    graph_norm(kwargs['hidden']),
-                    kwargs['act_module'](),
-                    Linear(kwargs['hidden'], kwargs['hidden']),
-                    graph_norm(kwargs['hidden']),
-                    kwargs['act_module']()
-                )
+                update_down_nn = Identity()
 
             update_boundaries_nn = passed_update_boundaries_nn
             if update_boundaries_nn is None:
-                update_boundaries_nn = Sequential(
-                    Linear(kwargs['layer_dim'], kwargs['hidden']),
-                    graph_norm(kwargs['hidden']),
-                    kwargs['act_module'](),
-                    Linear(kwargs['hidden'], kwargs['hidden']),
-                    graph_norm(kwargs['hidden']),
-                    kwargs['act_module']()
-                )
+                update_boundaries_nn = Identity()
 
             update_coboundaries_nn = passed_update_coboundaries_nn
             if update_coboundaries_nn is None:
-                update_coboundaries_nn = Sequential(
-                    Linear(kwargs['layer_dim'], kwargs['hidden']),
-                    graph_norm(kwargs['hidden']),
-                    kwargs['act_module'](),
-                    Linear(kwargs['hidden'], kwargs['hidden']),
-                    graph_norm(kwargs['hidden']),
-                    kwargs['act_module']()
-                )
+                update_coboundaries_nn = Identity()
             
             combine_nn = Sequential(
-                Linear(kwargs['hidden']*num_adjs, kwargs['hidden']),
+                Linear(kwargs['layer_dim']*(num_adjs+1), kwargs['layer_dim']*2),
+                graph_norm(kwargs['layer_dim']*2),
+                kwargs['act_module'](),
+                Linear(kwargs['layer_dim']*2, kwargs['hidden']),
+                graph_norm(kwargs['hidden']),
+                kwargs['act_module'](),
+                Linear(kwargs['hidden'], kwargs['hidden']),
                 graph_norm(kwargs['hidden']),
                 kwargs['act_module']())
 
-            mp = DenseCINCochainConv(dim, up_msg_size, down_msg_size, boundary_msg_size=boundary_msg_size,
+            mp = DenseBasicCochainConv(dim, up_msg_size, down_msg_size, boundary_msg_size=boundary_msg_size,
                 coboundary_msg_size=coboundary_msg_size,
                 msg_up_nn=msg_up_nn, msg_boundaries_nn=msg_boundaries_nn, update_up_nn=update_up_nn,
                 msg_down_nn=msg_down_nn, update_down_nn=update_down_nn,
