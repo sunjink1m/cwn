@@ -1,0 +1,18 @@
+========= Final result ==========
+Dataset:                MOLHIV
+SHA:                    fcfb4cb
+----------- Best epoch ----------
+Train:                  0.8998201764422281 ± 0.03262712024752544
+Valid:                  0.8294087628192567 ± 0.008914240305647868
+Test:                   0.8011715174105333 ± 0.012024486440817222
+Test Min:               0.77850673052782
+Test Max:               0.815504355047413
+----------- Last epoch ----------
+Train:                  0.9785215629702747 ± 0.0015337932008495621
+Valid:                  0.775034701809393 ± 0.01680643692345005
+Test:                   0.7678553081365033 ± 0.014174360116200579
+Test Min:               0.7493114969389134
+Test Max:               0.79965236872091
+---------------------------------
+
+Namespace(batch_size=128, dataset='MOLHIV', device=0, drop_position='lin2', drop_rate=0.5, dump_curves=False, early_stop=False, emb_dim=64, epochs=150, eval_metric='ogbg-molhiv', exp_name='1', final_readout='sum', flow_classes=3, flow_points=400, fold=None, folds=None, fully_orient_invar=False, graph_norm='bn', include_coboundary_links=False, include_down_adj=False, indrop_rate=0.0, init_method='sum', iso_eps=0.01, jump_mode=None, lr=0.0003, lr_scheduler='None', lr_scheduler_decay_rate=0.5, lr_scheduler_decay_steps=50, lr_scheduler_min=1e-05, lr_scheduler_patience=10, max_dim=2, max_ring_size=6, minimize=False, model='ogb_embed_sparse_basic', nonlinearity='relu', num_layers=3, num_workers=0, omit_2cell_down='False', paraid=0, preproc_jobs=10, readout='mean', readout_dims=(0, 1, 2), result_folder='/vol/bitbucket/sk2521/cwn/exp/results/MOLHIV_tuning_molhiv_basic_sparse', seed=43, simple_features=False, start_seed=0, stop_seed=14, task_type='bin_classification', test_orient='default', train_eval_period=10, train_orient='default', tune=False, untrained=False, use_boundaries='True', use_coboundaries='True', use_edge_features=True)
