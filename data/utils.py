@@ -566,7 +566,9 @@ def convert_graph_dataset_with_rings(dataset, max_ring_size=7, include_down_adj=
         if complex.y is None:
             assert graph.y is None
         else:
-            assert torch.equal(complex.y, graph.y)
+            complex_y_wo_nans = complex.y[ ~torch.isnan(complex.y)] # i did this to ignore labels which are nan
+            graph_y_wo_nans = graph.y[ ~torch.isnan(graph.y)]
+            assert torch.equal(complex_y_wo_nans, graph_y_wo_nans)
         assert torch.equal(complex.cochains[0].x, graph.x)
         if complex.dimension >= 1:
             assert complex.cochains[1].x.size(0) == (graph.edge_index.size(1) // 2)
