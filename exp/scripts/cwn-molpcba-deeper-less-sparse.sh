@@ -1,6 +1,8 @@
 #!/bin/bash
 
-python -m pdb -c continue -m exp.run_mol_exp \
+# python -m pdb -c continue -m exp.run_mol_exp \
+# python -m cProfile -o deeper_profile.txt -m exp.run_mol_exp \
+python -m exp.run_mol_exp \
   --device 0 \
   --start_seed 0 \
   --stop_seed 0 \
@@ -21,11 +23,11 @@ python -m pdb -c continue -m exp.run_mol_exp \
   --lr_scheduler None \
   --num_layers 14 \
   --emb_dim 128 \
-  --batch_size 32 \
+  --batch_size 256 \
   --epochs 300 \
-  --num_workers 2 \
+  --num_workers 0 \
   --preproc_jobs 32 \
-  --task_type classification \
+  --task_type bin_classification \
   --eval_metric ogbg-molpcba \
   --max_dim 2  \
   --max_ring_size 12 \
