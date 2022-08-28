@@ -1,6 +1,6 @@
 #!/bin/bash
 
-python -m exp.run_mol_exp \
+python -m ipdb -c continue -m exp.run_mol_exp \
   --device 0 \
   --start_seed 0 \
   --stop_seed 0 \
@@ -24,7 +24,7 @@ python -m exp.run_mol_exp \
   --batch_size 32 \
   --epochs 300 \
   --num_workers 2 \
-  --preproc_jobs 2 \
+  --preproc_jobs 10 \
   --task_type classification \
   --eval_metric ogbg-molpcba \
   --max_dim 2  \
