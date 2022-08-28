@@ -1,0 +1,36 @@
+#!/bin/bash
+
+python -m exp.run_mol_exp \
+  --device 0 \
+  --start_seed 0 \
+  --stop_seed 0 \
+  --exp_name cwn-molpcba-deeper-less-sparse \
+  --dataset MOLPCBA \
+  --model ogb_embed_less_sparse_deeper \
+  --use_coboundaries True \
+  --use_boundaries True \
+  --indrop_rate 0.0 \
+  --drop_rate 0.5 \
+  --res_drop_rate 0.5 \
+  --graph_norm bn \
+  --drop_position lin2 \
+  --nonlinearity relu \
+  --readout mean \
+  --final_readout mean \
+  --lr 0.01 \
+  --lr_scheduler None \
+  --num_layers 14 \
+  --emb_dim 128 \
+  --batch_size 32 \
+  --epochs 300 \
+  --num_workers 2 \
+  --preproc_jobs 2 \
+  --task_type classification \
+  --eval_metric ogbg-molpcba \
+  --max_dim 2  \
+  --max_ring_size 12 \
+  --init_method sum \
+  --train_eval_period 1 \
+  --use_edge_features \
+  --include_down_adj \
+  --dump_curves

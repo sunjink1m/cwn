@@ -10,7 +10,7 @@ from torch_scatter import scatter
 from ogb.graphproppred.mol_encoder import AtomEncoder, BondEncoder
 from abc import ABC, abstractmethod
 from mp.deepergcn_utils import SoftmaxAggregation, PowerMeanAggregation, MLP, MessageNorm
-
+import torch.nn.functional as F
 
 class DummyCochainMessagePassing(CochainMessagePassing):
     """This is a dummy parameter-free message passing model used for testing."""
@@ -638,178 +638,6 @@ class DenseCINConv(torch.nn.Module):
         return out
 
 
-class SparseDeeperCCNCochainConv(CochainMessagePassing):
-    """This is a CIN Cochain layer that operates of boundaries and upper adjacent cells.
-    
-        This layer is based on pytorch_geometric/torch_geometric/nn/conv/gen_conv.py
-    """
-    def __init__(self, dim: int,
-                 up_msg_size: int,
-                 down_msg_size: int,
-                 boundary_msg_size: Optional[int],
-                 num_layers: int = 2,
-                 msg_norm: bool = True,
-                 learn_msg_scale: bool = True):
-        super(SparseDeeperCCNCochainConv, self).__init__(up_msg_size, down_msg_size, 
-                                                 boundary_msg_size=boundary_msg_size,
-                                                 use_down_msg=False)
-        self.dim = dim
-
-        assert up_msg_size==boundary_msg_size, "These must be same because we use residual \
-                                                connections. IE: we have to add them together."
-
-        channels = [up_msg_size]
-        for i in range(num_layers-1):
-            channels.append(up_msg_size * 2)
-        channels.append(up_msg_size)
-        # TODO: some variables like norm, learn, eps and type of aggr_module can become arguments
-        self.mlp = MLP(channels, norm='batch')
-
-        self.up_aggr_module = SoftmaxAggregation(learn=True)
-        self.boundaries_aggr_module = SoftmaxAggregation(learn=True)
-
-        self.msg_norm = msg_norm
-        self.up_msg_norm = MessageNorm(learn_msg_scale) if msg_norm else None
-        self.boundaries_msg_norm = MessageNorm(learn_msg_scale) if msg_norm else None
-
-        self.eps = 1e-7
-
-        self.concat_nn = Sequential(
-                    Linear(up_msg_size*2, up_msg_size),
-                    torch.nn.BatchNorm1d(up_msg_size),
-                    torch.nn.ReLU(),
-                )
-
-        self.reset_parameters()
-
-    def forward(self, cochain: CochainMessagePassingParams):
-        original_x = torch.clone(cochain.x)
-
-        out_up, _, out_boundaries, _ = self.propagate(cochain.up_index, cochain.down_index,
-                                              cochain.boundary_index, None, x=cochain.x,
-                                              up_attr=cochain.kwargs['up_attr'],
-                                              boundary_attr=cochain.kwargs['boundary_attr'])
-        
-        # message normalization, as seen in DeeperGCN
-        if self.msg_norm:
-            # TODO: review whether we should normalize up & bound outputs seperately or together
-            out_up = self.up_msg_norm(original_x, out_up)
-            out_boundaries = self.boundaries_msg_norm(original_x, out_boundaries)
-
-        # residual connections, as seen in DeeperGCN
-        # TODO: review whether we really should just be adding all this together:
-        # It seems we are treating out_up and out_bound equally; i think that might lose information
-        out = original_x + self.concat_nn(torch.cat([out_up,out_boundaries], dim=-1))
-
-        # mlp
-        return self.mlp(out)
-
-    def reset_parameters(self):
-        reset(self.up_aggr_module)
-        reset(self.boundaries_aggr_module)
-        reset(self.concat_nn)
-        if self.msg_norm:
-            self.up_msg_norm.reset_parameters()
-            self.boundaries_msg_norm.reset_parameters()
-
-    def message_up(self, up_x_j: Tensor, up_attr: Tensor) -> Tensor:
-        msg = up_x_j if up_attr is None else up_x_j + up_attr
-        # TODO: implement concat(x_j, edge_attr) that can optionally replace x_j + edge_attr
-        return msg.relu() + self.eps
-    
-    def message_boundary(self, boundary_x_j: Tensor) -> Tensor:
-        msg = boundary_x_j
-        return msg.relu() + self.eps
-    
-    def aggregate_up(self, inputs: Tensor, agg_up_index: Tensor,
-                     up_ptr: Optional[Tensor] = None,
-                     up_dim_size: Optional[int] = None) -> Tensor:
-        # this is identical to how the most up to date version of torch-geometric
-        # implements its aggregate
-        self.up_aggr_module(inputs, agg_up_index, ptr=up_ptr, dim_size=up_dim_size,
-                                dim=self.node_dim)
-    
-    def aggregate_boundary(self, inputs: Tensor, agg_boundary_index: Tensor,
-                       boundary_ptr: Optional[Tensor] = None,
-                       boundary_dim_size: Optional[int] = None) -> Tensor:
-        self.boundaries_aggr_module(inputs, agg_boundary_index, ptr=boundary_ptr, 
-                                dim_size=boundary_dim_size,
-                                dim=self.node_dim)
-    
-    
-class SparseDeeperCCNConv(torch.nn.Module):
-    """A cellular version of GIN which performs message passing from  cellular upper
-    neighbors and boundaries, but not from cellular lower neighbors nor co-boundaries
-    (hence why "Sparse")
-    """
-
-    def __init__(self, up_msg_size: int, down_msg_size: int, boundary_msg_size: Optional[int],
-                 max_dim: int = 2, **kwargs):
-        super(SparseDeeperCCNConv, self).__init__()
-        self.max_dim = max_dim
-        self.mp_levels = torch.nn.ModuleList()
-        for dim in range(max_dim+1):
-            mp = SparseDeeperCCNCochainConv(dim=dim, 
-                                            up_msg_size=up_msg_size, 
-                                            down_msg_size=down_msg_size, 
-                                            boundary_msg_size=boundary_msg_size,
-                                            num_layers= 2,
-                                            msg_norm = True,
-                                            learn_msg_scale = True)
-            self.mp_levels.append(mp)
-
-    def forward(self, *cochain_params: CochainMessagePassingParams, start_to_process=0):
-        assert len(cochain_params) <= self.max_dim+1
-
-        out = []
-        for dim in range(len(cochain_params)):
-            if dim < start_to_process:
-                out.append(cochain_params[dim].x)
-            else:
-                out.append(self.mp_levels[dim].forward(cochain_params[dim]))
-        return out
-
-
-class NormLayer(torch.nn.Module):
-    """Performs normalization (batch norm, layer norm, etc)
-    based on: https://github.com/lightaime/deep_gcns_torch/blob/751382aa2d25e25a2792c133cc99f8cfddae0657/gcn_lib/sparse/torch_nn.py#L23
-    """
-
-    def __init__(self, hidden_sizes: List[int], norm_type: str ='batch', max_dim: int = 2, **kwargs):
-        super(NormLayer, self).__init__()
-        assert max_dim+1==len(hidden_sizes), "You must provide the hidden size for each dimension!"
-        self.max_dim = max_dim
-        self.norm_layers = torch.nn.ModuleList()
-        # append a different norm layer for each dimension
-        for dim in range(len(hidden_sizes)):
-            norm_layer = self.norm_layer(norm_type, hidden_sizes[dim])
-            self.norm_layers.append(norm_layer)
-
-    def forward(self, *cochain_params: CochainMessagePassingParams, start_to_process=0):
-        assert len(cochain_params) <= self.max_dim+1
-
-        out = []
-        for dim in range(len(cochain_params)):
-            if dim < start_to_process:
-                out.append(cochain_params[dim].x)
-            else:
-                out.append(self.norm_layers[dim](cochain_params[dim].x))
-        return out
-    
-    def norm_layer(self, norm_type, nc):
-        # normalization layer 1d
-        norm = norm_type.lower()
-        if norm == 'batch' or 'bn':
-            layer = torch.nn.BatchNorm1d(nc, affine=True)
-        elif norm == 'layer':
-            layer = torch.nn.LayerNorm(nc, elementwise_affine=True)
-        elif norm == 'instance':
-            layer = torch.nn.InstanceNorm1d(nc, affine=False)
-        else:
-            raise NotImplementedError('normalization layer [%s] is not found' % norm)
-        return layer
-
-
 class DenseBasicCochainConv(CochainMessagePassing):
     """This is a CIN Cochain layer that operates of upper adjacent cells,
     lower adjacent cells, boundary, and coboundaries.
@@ -1100,11 +928,9 @@ class DenseBasicConv(torch.nn.Module):
         return out
 
 
-class DenseCINCochainConv(CochainMessagePassing):
-    """This is a CIN Cochain layer that operates of upper adjacent cells,
-    lower adjacent cells, boundary, and coboundaries.
-    
-    Based on LessSparseCINCochainConv
+class DeeperCINCochainConv(CochainMessagePassing):
+    """A combination of DenseCINCochainConv and GenConv. The latter is from here:
+    https://github.com/pyg-team/pytorch_geometric/blob/master/torch_geometric/nn/conv/gen_conv.py
     """
     def __init__(self, dim: int,
                  up_msg_size: Optional[int] = None,
@@ -1136,13 +962,28 @@ class DenseCINCochainConv(CochainMessagePassing):
         # TODO: add bunch of asserts here so that the nn's and the msg_sizes 
         # we need to use are not None!
 
-        super(DenseCINCochainConv, self).__init__(up_msg_size, down_msg_size, boundary_msg_size=boundary_msg_size,
+        super(DeeperCINCochainConv, self).__init__(up_msg_size, down_msg_size, boundary_msg_size=boundary_msg_size,
                                                 coboundary_msg_size=coboundary_msg_size,
                                                 use_up_msg=self.use_up_msg,
                                                 use_down_msg=self.use_down_msg,
                                                 use_boundary_msg=self.use_boundary_msg,
                                                 use_coboundary_msg=self.use_coboundary_msg)
         self.dim = dim
+
+        assert up_msg_size==boundary_msg_size, "These must be same because we use residual \
+                                                connections. IE: we have to add them together."
+
+        self.up_aggr_module = SoftmaxAggregation(t=0.1, learn=False) # TODO: argumentatize 't' and 'learn'
+        self.down_aggr_module = SoftmaxAggregation(t=0.1, learn=False) # TODO: argumentatize 't' and 'learn'
+        self.boundaries_aggr_module = SoftmaxAggregation(t=0.1, learn=False) # TODO: argumentatize 't' and 'learn'
+        self.coboundaries_aggr_module = SoftmaxAggregation(t=0.1, learn=False) # TODO: argumentatize 't' and 'learn'
+
+        self.up_msg_norm = MessageNorm(learn_scale=True)
+        self.down_msg_norm = MessageNorm(learn_scale=True)
+        self.boundaries_msg_norm = MessageNorm(learn_scale=True)
+        self.coboundaries_msg_norm = MessageNorm(learn_scale=True)
+
+        self.eps = 1e-7 # added before softmax aggregation to prevent infinity explosion
 
         self.msg_up_nn = msg_up_nn                              if self.use_up_msg else None 
         self.msg_down_nn = msg_down_nn                          if self.use_down_msg else None
@@ -1183,11 +1024,17 @@ class DenseCINCochainConv(CochainMessagePassing):
                                                 coboundary_attr=cochain.kwargs['coboundary_attr']
                                                 )
 
+        # perform MessageNorm, as in DeeperGCN
+        out_up = self.up_msg_norm(cochain.x, out_up) if self.use_up_msg else 0.
+        out_down = self.down_msg_norm(cochain.x, out_down) if self.use_down_msg else 0.
+        # out_boundaries = self.boundaries_msg_norm(cochain.x, out_boundaries) if self.use_boundary_msg else 0.
+        # out_coboundaries = self.coboundaries_msg_norm(cochain.x, out_coboundaries) if self.use_coboundary_msg else 0.
+
         # As in GIN, we can learn an injective update function for each multi-set
         out_up += (1 + self.eps1) * cochain.x if self.use_up_msg else 0.
         out_down += (1 + self.eps2) * cochain.x if self.use_down_msg else 0.
-        out_boundaries += (1 + self.eps3) * cochain.x if self.use_boundary_msg else 0.
-        out_coboundaries += (1 + self.eps4) * cochain.x if self.use_coboundary_msg else 0.
+        # out_boundaries += (1 + self.eps3) * cochain.x if self.use_boundary_msg else 0.
+        # out_coboundaries += (1 + self.eps4) * cochain.x if self.use_coboundary_msg else 0.
 
         out_up = self.update_up_nn(out_up) if self.use_up_msg else None
         out_down = self.update_down_nn(out_down) if self.use_down_msg else None
@@ -1205,6 +1052,15 @@ class DenseCINCochainConv(CochainMessagePassing):
         return self.combine_nn(torch.cat(outs_list, dim=-1))
 
     def reset_parameters(self):
+        reset(self.up_aggr_module)
+        reset(self.down_aggr_module)
+        reset(self.boundaries_aggr_module)
+        reset(self.coboundaries_aggr_module)
+        reset(self.up_msg_norm)
+        reset(self.down_msg_norm)
+        reset(self.boundaries_msg_norm)
+        reset(self.coboundaries_msg_norm)
+
         reset(self.msg_up_nn)
         reset(self.msg_down_nn)
         reset(self.msg_boundaries_nn)
@@ -1223,21 +1079,52 @@ class DenseCINCochainConv(CochainMessagePassing):
         self.eps4.data.fill_(self.initial_eps) if self.use_coboundary_msg else None
 
     def message_up(self, up_x_j: Tensor, up_attr: Tensor) -> Tensor:
-        return self.msg_up_nn((up_x_j, up_attr))
+        return self.msg_up_nn((up_x_j, up_attr)).relu() + self.eps
 
     def message_down(self, down_x_j: Tensor, down_attr: Tensor) -> Tensor:
-        return self.msg_down_nn((down_x_j, down_attr))
+        return self.msg_down_nn((down_x_j, down_attr)).relu() + self.eps
     
     def message_boundary(self, boundary_x_j: Tensor) -> Tensor:
-        return self.msg_boundaries_nn(boundary_x_j)
+        return self.msg_boundaries_nn(boundary_x_j).relu() + self.eps
     
     def message_coboundary(self, coboundary_x_j: Tensor) -> Tensor:
-        return self.msg_coboundaries_nn(coboundary_x_j)
+        return self.msg_coboundaries_nn(coboundary_x_j).relu() + self.eps
     
- 
-class DenseCINConv(torch.nn.Module):
-    """A cellular version of GIN which performs message passing from cellular upper
-    neighbors, cellular lower neighbors, boundaries, and boundaries.
+    def aggregate_up(self, inputs: Tensor, agg_up_index: Tensor,
+                     up_ptr: Optional[Tensor] = None,
+                     up_dim_size: Optional[int] = None) -> Tensor:
+        # this is identical to how the most up to date version of torch-geometric
+        # implements its aggregate
+        self.up_aggr_module(inputs, agg_up_index, ptr=up_ptr, dim_size=up_dim_size,
+                                dim=self.node_dim)
+    
+    def aggregate_down(self, inputs: Tensor, agg_down_index: Tensor,
+                     down_ptr: Optional[Tensor] = None,
+                     down_dim_size: Optional[int] = None) -> Tensor:
+        self.down_aggr_module(inputs, agg_down_index, ptr=down_ptr, dim_size=down_dim_size,
+                                dim=self.node_dim)
+    
+    def aggregate_boundary(self, inputs: Tensor, agg_boundary_index: Tensor,
+                       boundary_ptr: Optional[Tensor] = None,
+                       boundary_dim_size: Optional[int] = None) -> Tensor:
+        self.boundaries_aggr_module(inputs, agg_boundary_index, ptr=boundary_ptr, 
+                                dim_size=boundary_dim_size,
+                                dim=self.node_dim)
+    
+    def aggregate_coboundary(self, inputs: Tensor, agg_coboundary_index: Tensor,
+                       coboundary_ptr: Optional[Tensor] = None,
+                       coboundary_dim_size: Optional[int] = None) -> Tensor:
+        self.coboundaries_aggr_module(inputs, agg_coboundary_index, ptr=coboundary_ptr, 
+                                dim_size=coboundary_dim_size,
+                                dim=self.node_dim)
+
+
+class DeeperCINConv(torch.nn.Module):
+    """A combination of DenseCINCochainConv and DeepGCNLayer. The latter is from here:
+    https://github.com/lightaime/deep_gcns_torch/blob/525ec74834dcefec4e95e302656cf85095389027/examples/ogb/ogbg_mol/model.py
+
+    This corresponds to (self.block == 'res+') in the code above.
+    TODO: implement self.block == 'res' and others 
     """
 
     # TODO: Refactor the way we pass networks externally to allow for different networks per dim.
@@ -1259,9 +1146,13 @@ class DenseCINConv(torch.nn.Module):
                  omit_2cell_down=False,
                  variant='dense',
                  **kwargs):
-        super(DenseCINConv, self).__init__()
+        super(DeeperCINConv, self).__init__()
         self.max_dim = max_dim
         self.mp_levels = torch.nn.ModuleList()
+
+        self.res_norm_levels = torch.nn.ModuleList() # norm layers used during res connection
+        self.res_act = kwargs['act_module']() # act module used during res connection
+        self.res_drop_rate = kwargs['res_drop_rate'] # probability of dropout during res connection
 
         if variant == 'gnn': # default graph neural network over original graph
             self.use_up_msg = True
@@ -1385,9 +1276,10 @@ class DenseCINConv(torch.nn.Module):
             combine_nn = Sequential(
                 Linear(kwargs['hidden']*num_adjs, kwargs['hidden']),
                 graph_norm(kwargs['hidden']),
-                kwargs['act_module']())
+                # kwargs['act_module']())
+                )
 
-            mp = DenseCINCochainConv(dim, up_msg_size, down_msg_size, boundary_msg_size=boundary_msg_size,
+            mp = DeeperCINCochainConv(dim, up_msg_size, down_msg_size, boundary_msg_size=boundary_msg_size,
                 coboundary_msg_size=coboundary_msg_size,
                 msg_up_nn=msg_up_nn, msg_boundaries_nn=msg_boundaries_nn, update_up_nn=update_up_nn,
                 msg_down_nn=msg_down_nn, update_down_nn=update_down_nn,
@@ -1400,14 +1292,31 @@ class DenseCINConv(torch.nn.Module):
                 use_coboundary_msg = use_coboundary_msg)
             self.mp_levels.append(mp)
 
+            self.res_norm_levels.append(graph_norm(kwargs['hidden'])) # for use in res connection
+
+
     def forward(self, *cochain_params: CochainMessagePassingParams, start_to_process=0):
         assert len(cochain_params) <= self.max_dim+1
+
+        initial_xs = []
+        for dim in range(len(cochain_params)):  
+            # save the initial embedding to use later during res connection
+            initial_xs.append(cochain_params[dim].x)
+
+            # apply norm, act, and dropout, as is in self.block=='res+' from DeeperGCN
+            cochain_params[dim].x = self.res_norm_levels[dim](cochain_params[dim].x) # norm
+            cochain_params[dim].x = self.res_act(cochain_params[dim].x) # act
+            cochain_params[dim].x = F.dropout(cochain_params[dim].x, 
+                                                    p=self.res_drop_rate,
+                                                    training=self.training) # dropout
 
         out = []
         for dim in range(len(cochain_params)):
             if dim < start_to_process:
                 out.append(cochain_params[dim].x)
             else:
-                out.append(self.mp_levels[dim].forward(cochain_params[dim]))
+                output_x = self.mp_levels[dim].forward(cochain_params[dim]) # conv layer
+
+                out.append(initial_xs[dim] + output_x) # res connection
         return out
 

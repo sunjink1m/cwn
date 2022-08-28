@@ -26,6 +26,8 @@ def get_parser():
     parser.add_argument('--omit_2cell_down', type=str, default='False',
                         help='whether to use omit down adjacencies between 2-cells (default: False)')
     # ^^^ here we explicitly pass it as string as easier to handle in tuning
+    parser.add_argument('--res_drop_rate', type=float, default=0.0,
+                        help='dropout rate during residual connections for molec models(default: 0.0)')
     parser.add_argument('--indrop_rate', type=float, default=0.0,
                         help='inputs dropout rate for molec models(default: 0.0)')
     parser.add_argument('--drop_rate', type=float, default=0.0,
