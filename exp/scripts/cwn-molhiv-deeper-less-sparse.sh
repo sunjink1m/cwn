@@ -3,7 +3,7 @@
 python -m exp.run_mol_exp \
   --device 0 \
   --start_seed 0 \
-  --stop_seed 9 \
+  --stop_seed 14 \
   --exp_name cwn-molhiv-deeper-less-sparse \
   --dataset MOLHIV \
   --model ogb_embed_less_sparse_deeper \
@@ -28,7 +28,7 @@ python -m exp.run_mol_exp \
   --task_type bin_classification \
   --eval_metric ogbg-molhiv \
   --max_dim 2  \
-  --max_ring_size 12 \
+  --max_ring_size 6 \
   --init_method sum \
   --train_eval_period 10 \
   --use_edge_features \
