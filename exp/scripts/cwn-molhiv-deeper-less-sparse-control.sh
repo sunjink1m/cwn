@@ -6,12 +6,11 @@ python -m exp.run_mol_exp \
   --stop_seed 14 \
   --exp_name cwn-molhiv-deeper-less-sparse-control \
   --dataset MOLHIV \
-  --model ogb_embed_less_sparse \
+  --model ogb_embed_less_sparse_cin \
   --use_coboundaries True \
   --use_boundaries True \
   --indrop_rate 0.0 \
-  --drop_rate 0.2 \
-  --res_drop_rate 0.2 \
+  --drop_rate 0.5 \
   --graph_norm bn \
   --drop_position lin2 \
   --nonlinearity relu \
