@@ -1,18 +1,18 @@
 ========= Final result ==========
 Dataset:                MOLHIV
-SHA:                    bf8df94
+SHA:                    0282b2a
 ----------- Best epoch ----------
-Train:                  0.906901402360783 ± 0.026824346944542013
-Valid:                  0.8282921810699587 ± 0.006803759935059396
-Test:                   0.8015388477954384 ± 0.008350336612851198
-Test Min:               0.7902528051912938
-Test Max:               0.8163657081056027
+Train:                  0.9164954062168214 ± 0.020764137462518546
+Valid:                  0.8309122697432884 ± 0.009565403020640672
+Test:                   0.8052388999401302 ± 0.007940490111299724
+Test Min:               0.7933621738542653
+Test Max:               0.8182940960621101
 ----------- Last epoch ----------
-Train:                  0.945988154461346 ± 0.005417345318772185
-Valid:                  0.8019026797961981 ± 0.0076321202498863365
-Test:                   0.7960169180555823 ± 0.008873400354020344
-Test Min:               0.7818072963942911
-Test Max:               0.8096583557040499
+Train:                  0.9433033356291315 ± 0.005474382805768433
+Valid:                  0.8004791911620615 ± 0.011954208667300528
+Test:                   0.7953208829834489 ± 0.010905645897913686
+Test Min:               0.7746731300334113
+Test Max:               0.810838370768072
 ---------------------------------
 
-Namespace(batch_size=128, dataset='MOLHIV', device=0, drop_position='lin2', drop_rate=0.5, dump_curves=True, early_stop=False, emb_dim=64, epochs=150, eval_metric='ogbg-molhiv', exp_name='cwn-molhiv', final_readout='sum', flow_classes=3, flow_points=400, fold=None, folds=None, fully_orient_invar=False, graph_norm='bn', include_coboundary_links=False, include_down_adj=False, indrop_rate=0.0, init_method='sum', iso_eps=0.01, jump_mode=None, lr=0.0001, lr_scheduler='None', lr_scheduler_decay_rate=0.5, lr_scheduler_decay_steps=50, lr_scheduler_min=1e-05, lr_scheduler_patience=10, max_dim=2, max_ring_size=6, minimize=False, model='ogb_embed_sparse_cin', nonlinearity='relu', num_layers=2, num_workers=2, omit_2cell_down='False', paraid=0, preproc_jobs=32, readout='mean', readout_dims=(0, 1, 2), res_drop_rate=0.0, result_folder='/vol/bitbucket/sk2521/cwn/exp/results', seed=43, simple_features=False, start_seed=0, stop_seed=9, task_type='bin_classification', test_orient='default', train_eval_period=10, train_orient='default', tune=False, untrained=False, use_boundaries='False', use_coboundaries='True', use_edge_features=True)
+Namespace(batch_size=128, dataset='MOLHIV', device=0, drop_position='lin2', drop_rate=0.5, dump_curves=True, early_stop=False, emb_dim=64, epochs=150, eval_metric='ogbg-molhiv', exp_name='cwn-molhiv', final_readout='sum', flow_classes=3, flow_points=400, fold=None, folds=None, fully_orient_invar=False, graph_norm='bn', indrop_rate=0.0, init_method='sum', iso_eps=0.01, jump_mode=None, lr=0.0001, lr_scheduler='None', lr_scheduler_decay_rate=0.5, lr_scheduler_decay_steps=50, lr_scheduler_min=1e-05, lr_scheduler_patience=10, max_dim=2, max_ring_size=6, minimize=False, model='ogb_embed_sparse_cin', nonlinearity='relu', num_layers=2, num_workers=2, paraid=0, preproc_jobs=32, readout='mean', readout_dims=(0, 1, 2), result_folder='/vol/bitbucket/sk2521/cwn/exp/results', seed=43, simple_features=False, start_seed=0, stop_seed=9, task_type='bin_classification', test_orient='default', train_eval_period=10, train_orient='default', tune=False, untrained=False, use_coboundaries='True', use_edge_features=True)
