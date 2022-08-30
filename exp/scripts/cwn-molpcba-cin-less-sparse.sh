@@ -2,13 +2,13 @@
 
 # python -m pdb -c continue -m exp.run_mol_exp \
 # python -m cProfile -o deeper_profile.txt -m exp.run_mol_exp \
-python cProfile -o deepercin_profile.txt -m -m exp.run_mol_exp \
+python cProfile -o cin_profile.txt -m -m exp.run_mol_exp \
   --device 0 \
   --start_seed 0 \
   --stop_seed 0 \
-  --exp_name cwn-molpcba-deeper-less-sparse \
+  --exp_name cwn-molpcba-cin-less-sparse \
   --dataset MOLPCBA \
-  --model ogb_embed_less_sparse_deeper \
+  --model ogb_embed_less_sparse \
   --use_coboundaries True \
   --use_boundaries True \
   --indrop_rate 0.0 \
