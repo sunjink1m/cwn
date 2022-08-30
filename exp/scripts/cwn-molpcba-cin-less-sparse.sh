@@ -8,7 +8,7 @@ python -m cProfile -o cin_profile.txt -m -m exp.run_mol_exp \
   --stop_seed 0 \
   --exp_name cwn-molpcba-cin-less-sparse \
   --dataset MOLPCBA \
-  --model ogb_embed_less_sparse \
+  --model ogb_embed_less_sparse_cin \
   --use_coboundaries True \
   --use_boundaries True \
   --indrop_rate 0.0 \
