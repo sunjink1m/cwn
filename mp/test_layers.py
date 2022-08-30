@@ -5,7 +5,7 @@ import torch.optim as optim
 from mp.nn import get_nonlinearity, get_graph_norm
 from mp.layers import (
     DummyCellularMessagePassing, CINConv, OrientedConv, InitReduceConv, EmbedVEWithReduce,  DenseCINConv, 
-    DenseBasicConv, SparseDeeperCCNConv)
+    DenseBasicConv)
 from data.dummy_complexes import get_house_complex, get_molecular_complex, get_bridged_complex, get_filled_square_complex
 from torch import nn
 from data.datasets.flow import load_flow_dataset
