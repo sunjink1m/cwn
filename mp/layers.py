@@ -1095,28 +1095,28 @@ class DeeperCINCochainConv(CochainMessagePassing):
                      up_dim_size: Optional[int] = None) -> Tensor:
         # this is identical to how the most up to date version of torch-geometric
         # implements its aggregate
-        self.up_aggr_module(inputs, agg_up_index, ptr=up_ptr, dim_size=up_dim_size,
-                                dim=self.node_dim)
+        return self.up_aggr_module(inputs, agg_up_index, ptr=up_ptr, dim_size=up_dim_size,
+                                    dim=self.node_dim)
     
     def aggregate_down(self, inputs: Tensor, agg_down_index: Tensor,
                      down_ptr: Optional[Tensor] = None,
                      down_dim_size: Optional[int] = None) -> Tensor:
-        self.down_aggr_module(inputs, agg_down_index, ptr=down_ptr, dim_size=down_dim_size,
-                                dim=self.node_dim)
+        return self.down_aggr_module(inputs, agg_down_index, ptr=down_ptr, dim_size=down_dim_size,
+                                    dim=self.node_dim)
     
     def aggregate_boundary(self, inputs: Tensor, agg_boundary_index: Tensor,
                        boundary_ptr: Optional[Tensor] = None,
                        boundary_dim_size: Optional[int] = None) -> Tensor:
-        self.boundaries_aggr_module(inputs, agg_boundary_index, ptr=boundary_ptr, 
-                                dim_size=boundary_dim_size,
-                                dim=self.node_dim)
+        return self.boundaries_aggr_module(inputs, agg_boundary_index, ptr=boundary_ptr, 
+                                        dim_size=boundary_dim_size,
+                                        dim=self.node_dim)
     
     def aggregate_coboundary(self, inputs: Tensor, agg_coboundary_index: Tensor,
                        coboundary_ptr: Optional[Tensor] = None,
                        coboundary_dim_size: Optional[int] = None) -> Tensor:
-        self.coboundaries_aggr_module(inputs, agg_coboundary_index, ptr=coboundary_ptr, 
-                                dim_size=coboundary_dim_size,
-                                dim=self.node_dim)
+        return self.coboundaries_aggr_module(inputs, agg_coboundary_index, ptr=coboundary_ptr, 
+                                        dim_size=coboundary_dim_size,
+                                        dim=self.node_dim)
 
 
 class DeeperCINConv(torch.nn.Module):
