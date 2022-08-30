@@ -1117,6 +1117,36 @@ class DeeperCINCochainConv(CochainMessagePassing):
         return self.coboundaries_aggr_module(inputs, agg_coboundary_index, ptr=coboundary_ptr, 
                                         dim_size=coboundary_dim_size,
                                         dim=self.node_dim)
+    
+    def update(self, up_inputs: Optional[Tensor], down_inputs: Optional[Tensor],
+               boundary_inputs: Optional[Tensor], coboundary_inputs: Optional[Tensor],
+               x: Tensor) -> (Tensor, Tensor, Tensor, Tensor):
+        r"""Updates cell embeddings. Takes in the output of the aggregations from different
+        adjacencies as the first three arguments and any argument which was initially passed to
+        :meth:`propagate`.
+        """
+        if up_inputs is None:
+            assert self.use_up_msg == False
+            # torch.zeroes is commented because it's extremely slow when testing deeperCIN on molpcba
+            # up_inputs = torch.zeros(x.size(0), self.up_msg_size).to(device=x.device) 
+            up_inputs = 0
+        if down_inputs is None:
+            assert self.use_down_msg == False
+            # torch.zeroes is commented because it's extremely slow when testing deeperCIN on molpcba
+            # down_inputs = torch.zeros(x.size(0), self.down_msg_size).to(device=x.device) 
+            down_inputs = 0
+        if boundary_inputs is None:
+            assert self.use_boundary_msg == False
+            # torch.zeroes is commented because it's extremely slow when testing deeperCIN on molpcba
+            # boundary_inputs = torch.zeros(x.size(0), self.boundary_msg_size).to(device=x.device) 
+            boundary_inputs = 0
+        if coboundary_inputs is None:
+            assert self.use_coboundary_msg == False
+            # torch.zeroes is commented because it's extremely slow when testing deeperCIN on molpcba
+            # coboundary_inputs = torch.zeros(x.size(0), self.coboundary_msg_size).to(device=x.device) 
+            coboundary_inputs = 0
+
+        return up_inputs, down_inputs, boundary_inputs, coboundary_inputs
 
 
 class DeeperCINConv(torch.nn.Module):

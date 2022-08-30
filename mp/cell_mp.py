@@ -407,7 +407,9 @@ class CochainMessagePassing(torch.nn.Module):
         # Up messaging and aggregation
         if self.use_up_msg and up_index is not None:
             up_out = self.__message_and_aggregate__(up_index, 'up', up_size, **kwargs)
-
+            assert up_out is not None
+        # if self.use_up_msg and up_index is None:
+        #     raise TypeError
         # Down messaging and aggregation
         if self.use_down_msg and down_index is not None:
             down_out = self.__message_and_aggregate__(down_index, 'down', down_size, **kwargs)
