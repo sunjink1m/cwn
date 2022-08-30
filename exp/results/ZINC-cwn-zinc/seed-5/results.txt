@@ -1,14 +1,14 @@
 ========== Result ============
 Dataset:        ZINC
 ------------ Best epoch -----------
-Train:          0.3835311233997345
-Validation:     0.3927757143974304
-Test:           0.3776203691959381
-Best epoch:     233
+Train:          0.027087975293397903
+Validation:     0.08191521465778351
+Test:           0.08174993842840195
+Best epoch:     382
 ------------ Last epoch -----------
-Train:          0.3783903121948242
-Validation:     0.3955450654029846
-Test:           0.3776545524597168
+Train:          0.025348009541630745
+Validation:     0.08393359929323196
+Test:           0.0880715474486351
 -------------------------------
 
-Namespace(batch_size=128, dataset='ZINC', device=0, drop_position='lin2', drop_rate=0.1, dump_curves=True, early_stop=True, emb_dim=73, epochs=1000, eval_metric='mae', exp_name='cwn-zinc', final_readout='sum', flow_classes=3, flow_points=400, fold=None, folds=None, fully_orient_invar=False, graph_norm='bn', include_coboundary_links=False, include_down_adj=False, indrop_rate=0.0, init_method='sum', iso_eps=0.01, jump_mode=None, lr=0.005, lr_scheduler='ReduceLROnPlateau', lr_scheduler_decay_rate=0.5, lr_scheduler_decay_steps=50, lr_scheduler_min=1e-05, lr_scheduler_patience=20.0, max_dim=2, max_ring_size=18, minimize=True, model='embed_sparse_deeper_ccn', nonlinearity='relu', num_layers=7, num_workers=0, paraid=0, preproc_jobs=32, readout='sum', readout_dims=(0, 1, 2), result_folder='/vol/bitbucket/sk2521/cwn/exp/results', seed=5, simple_features=False, start_seed=0, stop_seed=9, task_type='regression', test_orient='default', train_eval_period=20, train_orient='default', tune=False, untrained=False, use_boundaries='False', use_coboundaries='True', use_edge_features=True)
+Namespace(batch_size=128, dataset='ZINC', device=0, drop_position='lin2', drop_rate=0.0, dump_curves=True, early_stop=True, emb_dim=128, epochs=1000, eval_metric='mae', exp_name='cwn-zinc', final_readout='sum', flow_classes=3, flow_points=400, fold=None, folds=None, fully_orient_invar=False, graph_norm='bn', include_coboundary_links=False, include_down_adj=False, indrop_rate=0.0, init_method='sum', iso_eps=0.01, jump_mode=None, lr=0.001, lr_scheduler='ReduceLROnPlateau', lr_scheduler_decay_rate=0.5, lr_scheduler_decay_steps=50, lr_scheduler_min=1e-05, lr_scheduler_patience=20.0, max_dim=2, max_ring_size=18, minimize=True, model='embed_sparse_cin', nonlinearity='relu', num_layers=4, num_workers=0, omit_2cell_down='False', paraid=0, preproc_jobs=32, readout='sum', readout_dims=(0, 1, 2), res_drop_rate=0.0, result_folder='/vol/bitbucket/sk2521/cwn/exp/results', seed=5, simple_features=False, start_seed=0, stop_seed=9, task_type='regression', test_orient='default', train_eval_period=20, train_orient='default', tune=False, untrained=False, use_boundaries='False', use_coboundaries='True', use_edge_features=True)
