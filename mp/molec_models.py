@@ -27,8 +27,8 @@ class OGBEmbedCWN(torch.nn.Module):
                  indropout_rate: float = 0.0, max_dim: int = 2, jump_mode=None,
                  nonlinearity='relu', readout='sum', train_eps=False, final_hidden_multiplier: int = 2,
                  readout_dims=(0, 1, 2), final_readout='sum', apply_dropout_before='lin2',
-                 init_reduce='sum', embed_edge=False, embed_dim=None, use_coboundaries=False,
-                 use_boundaries=False,
+                 init_reduce='sum', embed_edge=False, embed_dim=None, use_up_attr=False,
+                 use_down_attr=False,
                  graph_norm='bn', omit_2cell_down=False, variant='sparse', conv_type=DenseCINConv,
                  res_drop_rate=None):
         super(OGBEmbedCWN, self).__init__()
@@ -68,8 +68,8 @@ class OGBEmbedCWN(torch.nn.Module):
                     passed_msg_up_nn=None, passed_update_up_nn=None,
                     passed_update_boundaries_nn=None, train_eps=train_eps, max_dim=self.max_dim,
                     hidden=hidden, act_module=act_module, layer_dim=layer_dim,
-                    graph_norm=self.graph_norm, use_coboundaries=use_coboundaries, 
-                    use_boundaries=use_boundaries, 
+                    graph_norm=self.graph_norm, use_up_attr=use_up_attr, 
+                    use_down_attr=use_down_attr, 
                     omit_2cell_down=omit_2cell_down, variant=variant, res_drop_rate=res_drop_rate))
         self.jump = JumpingKnowledge(jump_mode) if jump_mode is not None else None
         self.lin1s = torch.nn.ModuleList()
@@ -186,7 +186,7 @@ class EmbedSparseCINNoRings(torch.nn.Module):
                  dropout_rate: float = 0.5, nonlinearity='relu',
                  readout='sum', train_eps=False, final_hidden_multiplier: int = 2,
                  final_readout='sum', apply_dropout_before='lin2',
-                 init_reduce='sum', embed_edge=False, embed_dim=None, use_coboundaries=False,
+                 init_reduce='sum', embed_edge=False, embed_dim=None, use_up_attr=False,
                  graph_norm='bn'):
         super(EmbedSparseCINNoRings, self).__init__()
 
@@ -220,7 +220,7 @@ class EmbedSparseCINNoRings(torch.nn.Module):
                               passed_msg_up_nn=None, passed_update_up_nn=None,
                               passed_update_boundaries_nn=None, train_eps=train_eps, max_dim=self.max_dim,
                               hidden=hidden, act_module=act_module, layer_dim=layer_dim,
-                              graph_norm=self.graph_norm, use_coboundaries=use_coboundaries, variant='sparse'))
+                              graph_norm=self.graph_norm, use_up_attr=use_up_attr, variant='sparse'))
         self.lin1s = torch.nn.ModuleList()
         for _ in range(self.max_dim + 1):
             self.lin1s.append(Linear(hidden, final_hidden_multiplier * hidden))
@@ -411,8 +411,8 @@ class EmbedDenseCIN(torch.nn.Module):
                  dropout_rate: float = 0.5, max_dim: int = 2, jump_mode=None, nonlinearity='relu',
                  readout='sum', train_eps=False, final_hidden_multiplier: int = 2,
                  readout_dims=(0, 1, 2), final_readout='sum', apply_dropout_before='lin2',
-                 init_reduce='sum', embed_edge=False, embed_dim=None, use_coboundaries=False,
-                 use_boundaries=False,
+                 init_reduce='sum', embed_edge=False, embed_dim=None, use_up_attr=False,
+                 use_down_attr=False,
                  graph_norm='bn',
                  omit_2cell_down=False,
                  variant='dense'):
@@ -451,8 +451,8 @@ class EmbedDenseCIN(torch.nn.Module):
                     boundary_msg_size=layer_dim,
                     train_eps=train_eps, max_dim=self.max_dim,
                     hidden=hidden, act_module=act_module, layer_dim=layer_dim,
-                    graph_norm=self.graph_norm, use_coboundaries=use_coboundaries,
-                    use_boundaries=use_boundaries,
+                    graph_norm=self.graph_norm, use_up_attr=use_up_attr,
+                    use_down_attr=use_down_attr,
                     omit_2cell_down=omit_2cell_down,
                     variant=variant))
         self.jump = JumpingKnowledge(jump_mode) if jump_mode is not None else None

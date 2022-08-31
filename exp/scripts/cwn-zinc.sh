@@ -26,7 +26,7 @@ python -m exp.run_mol_exp \
   --eval_metric mae \
   --minimize \
   --lr_scheduler 'ReduceLROnPlateau' \
-  --use_coboundaries True \
+  --use_up_attr True \
   --use_edge_features \
   --early_stop \
   --lr_scheduler_patience 20 \

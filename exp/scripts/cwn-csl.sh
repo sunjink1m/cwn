@@ -28,5 +28,5 @@ python -m exp.run_mol_exp \
   --early_stop \
   --use_edge_features \
   --device=0 \
-  --use_coboundaries True \
+  --use_up_attr True \
   --preproc_jobs 32

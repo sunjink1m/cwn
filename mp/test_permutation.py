@@ -19,7 +19,7 @@ def test_sparse_cin0_perm_invariance_on_dummy_mol_complexes():
                         for graph in dummy_graphs]
 
     # Instantiate model
-    model = SparseCIN(num_input_features=1, num_classes=16, num_layers=3, hidden=32, use_coboundaries=True, nonlinearity='elu')
+    model = SparseCIN(num_input_features=1, num_classes=16, num_layers=3, hidden=32, use_up_attr=True, nonlinearity='elu')
     model.eval()
 
     # Compute reference complex embeddings

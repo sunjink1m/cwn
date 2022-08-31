@@ -9,8 +9,8 @@ do
     --exp_name cwn-molhiv-dense \
     --dataset MOLHIV \
     --model ogb_embed_dense_cin \
-    --use_coboundaries True \
-    --use_boundaries True \
+    --use_up_attr True \
+    --use_down_attr True \
     --indrop_rate 0.0 \
     --drop_rate 0.5 \
     --graph_norm bn \

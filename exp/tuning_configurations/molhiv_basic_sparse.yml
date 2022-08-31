@@ -53,9 +53,9 @@ max_ring_size:
     # - 18
 model:
     - ogb_embed_sparse_basic
-use_coboundaries:
+use_up_attr:
     - True
-use_boundaries:
+use_down_attr:
     - True
 omit_2cell_down: # omit down adjacencies between 2-cells, for regularization
     # - True

@@ -114,14 +114,14 @@ def test_molec_models_with_batching_on_proteins(model):
         include_coboundary_links = False
         model = EmbedDenseCIN(atom_types=64, bond_types=4, out_size=3, num_layers=3, hidden=5,
                            jump_mode='cat', max_dim=2,
-                            use_coboundaries=True, variant='dense')
+                            use_up_attr=True, variant='dense')
     elif model == 'lesssparsecin':
         include_down_adj = True
         include_coboundary_links = False
         model = EmbedDenseCIN(atom_types=64, bond_types=4, out_size=3, num_layers=3, hidden=5,
                            jump_mode='cat', max_dim=2,
-                            use_coboundaries=True,
-                            use_boundaries=True, variant='less-sparse')
+                            use_up_attr=True,
+                            use_down_attr=True, variant='less-sparse')
     elif model == 'densecin':
         include_down_adj = True
         include_coboundary_links = True
@@ -133,8 +133,8 @@ def test_molec_models_with_batching_on_proteins(model):
                             nonlinearity='sigmoid',
                             embed_edge=True, 
                             embed_dim=5, 
-                            use_coboundaries=True,
-                            use_boundaries=True)
+                            use_up_attr=True,
+                            use_down_attr=True)
 
     model.eval()
 

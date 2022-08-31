@@ -105,10 +105,10 @@ def main(args):
     evaluator = Evaluator(args.eval_metric, eps=args.iso_eps)
 
     # Use coboundary features for up-messages?
-    use_coboundaries = args.use_coboundaries.lower() == 'true'
+    use_up_attr = args.use_up_attr.lower() == 'true'
 
     # Use boundary features for down-messages?
-    use_boundaries = args.use_boundaries.lower() == 'true'
+    use_down_attr = args.use_down_attr.lower() == 'true'
 
     # Omit down adjacencies in 2nd dimension (for regularization)?
     omit_2cell_down = args.omit_2cell_down.lower() == 'true'
@@ -141,7 +141,7 @@ def main(args):
                      readout=args.readout,                    # readout
                      final_readout=args.final_readout,        # final readout
                      apply_dropout_before=args.drop_position, # where to apply dropout
-                     use_coboundaries=use_coboundaries,       # whether to use coboundaries in up-msg
+                     use_up_attr=use_up_attr,       # whether to use coboundaries in up-msg
                      graph_norm=args.graph_norm,              # normalization layer
                      readout_dims=readout_dims                # readout_dims
                     ).to(device)
@@ -153,7 +153,7 @@ def main(args):
                      args.emb_dim,                            # hidden
                      max_dim=dataset.max_dim,                 # max_dim
                      nonlinearity=args.nonlinearity,          # nonlinearity
-                     use_coboundaries=use_coboundaries,       # whether to use coboundaries in up-msg
+                     use_up_attr=use_up_attr,       # whether to use coboundaries in up-msg
                      graph_norm=args.graph_norm,              # normalization layer
                     ).to(device)
     elif args.model == 'gin':
@@ -232,7 +232,7 @@ def main(args):
                                readout=args.readout,  # readout
                                final_readout=args.final_readout,  # final readout
                                apply_dropout_before=args.drop_position,  # where to apply dropout
-                               use_coboundaries=use_coboundaries,
+                               use_up_attr=use_up_attr,
                                embed_edge=args.use_edge_features,
                                graph_norm=args.graph_norm,  # normalization layer
                                readout_dims=readout_dims,  # readout_dims
@@ -251,8 +251,8 @@ def main(args):
                                readout=args.readout,  # readout
                                final_readout=args.final_readout,  # final readout
                                apply_dropout_before=args.drop_position,  # where to apply dropout
-                               use_coboundaries=use_coboundaries,
-                               use_boundaries=use_boundaries,
+                               use_up_attr=use_up_attr,
+                               use_down_attr=use_down_attr,
                                embed_edge=args.use_edge_features,
                                graph_norm=args.graph_norm,  # normalization layer
                                readout_dims=readout_dims,  # readout_dims
@@ -272,8 +272,8 @@ def main(args):
                                readout=args.readout,  # readout
                                final_readout=args.final_readout,  # final readout
                                apply_dropout_before=args.drop_position,  # where to apply dropout
-                               use_coboundaries=use_coboundaries,
-                               use_boundaries=use_boundaries,
+                               use_up_attr=use_up_attr,
+                               use_down_attr=use_down_attr,
                                embed_edge=args.use_edge_features,
                                graph_norm=args.graph_norm,  # normalization layer
                                readout_dims=readout_dims,  # readout_dims
@@ -291,7 +291,7 @@ def main(args):
                                       readout=args.readout,  # readout
                                       final_readout=args.final_readout,  # final readout
                                       apply_dropout_before=args.drop_position,  # where to apply dropout
-                                      use_coboundaries=use_coboundaries,
+                                      use_up_attr=use_up_attr,
                                       embed_edge=args.use_edge_features,
                                       graph_norm=args.graph_norm,  # normalization layer
         ).to(device)
@@ -320,8 +320,8 @@ def main(args):
                                   readout=args.readout,                    # readout
                                   final_readout=args.final_readout,        # final readout
                                   apply_dropout_before=args.drop_position, # where to apply dropout
-                                  use_coboundaries=use_coboundaries,       # whether to use coboundaries
-                                  use_boundaries=use_boundaries,           # whether to use boundaries
+                                  use_up_attr=use_up_attr,       # whether to use coboundaries
+                                  use_down_attr=use_down_attr,           # whether to use boundaries
                                   embed_edge=args.use_edge_features,       # whether to use edge feats
                                   graph_norm=args.graph_norm,              # normalization layer
                                   readout_dims=readout_dims,               # readout_dims
@@ -339,8 +339,8 @@ def main(args):
                                   readout=args.readout,                    # readout
                                   final_readout=args.final_readout,        # final readout
                                   apply_dropout_before=args.drop_position, # where to apply dropout
-                                  use_coboundaries=use_coboundaries,       # whether to use coboundaries
-                                  use_boundaries=use_boundaries,           # whether to use boundaries
+                                  use_up_attr=use_up_attr,       # whether to use coboundaries
+                                  use_down_attr=use_down_attr,           # whether to use boundaries
                                   embed_edge=args.use_edge_features,       # whether to use edge feats
                                   graph_norm=args.graph_norm,              # normalization layer
                                   readout_dims=readout_dims,               # readout_dims
@@ -359,8 +359,8 @@ def main(args):
                                   readout=args.readout,                    # readout
                                   final_readout=args.final_readout,        # final readout
                                   apply_dropout_before=args.drop_position, # where to apply dropout
-                                  use_coboundaries=use_coboundaries,       # whether to use coboundaries
-                                  use_boundaries=use_boundaries,           # whether to use boundaries
+                                  use_up_attr=use_up_attr,       # whether to use coboundaries
+                                  use_down_attr=use_down_attr,           # whether to use boundaries
                                   embed_edge=args.use_edge_features,       # whether to use edge feats
                                   graph_norm=args.graph_norm,              # normalization layer
                                   readout_dims=readout_dims,               # readout_dims
@@ -379,8 +379,8 @@ def main(args):
                                   readout=args.readout,                    # readout
                                   final_readout=args.final_readout,        # final readout
                                   apply_dropout_before=args.drop_position, # where to apply dropout
-                                  use_coboundaries=use_coboundaries,       # whether to use coboundaries
-                                  use_boundaries=use_boundaries,           # whether to use boundaries
+                                  use_up_attr=use_up_attr,       # whether to use coboundaries
+                                  use_down_attr=use_down_attr,           # whether to use boundaries
                                   embed_edge=args.use_edge_features,       # whether to use edge feats
                                   graph_norm=args.graph_norm,              # normalization layer
                                   readout_dims=readout_dims,               # readout_dims
@@ -399,8 +399,8 @@ def main(args):
                                   readout=args.readout,                    # readout
                                   final_readout=args.final_readout,        # final readout
                                   apply_dropout_before=args.drop_position, # where to apply dropout
-                                  use_coboundaries=use_coboundaries,       # whether to use coboundaries
-                                  use_boundaries=use_boundaries,           # whether to use boundaries
+                                  use_up_attr=use_up_attr,       # whether to use coboundaries
+                                  use_down_attr=use_down_attr,           # whether to use boundaries
                                   embed_edge=args.use_edge_features,       # whether to use edge feats
                                   graph_norm=args.graph_norm,              # normalization layer
                                   readout_dims=readout_dims,               # readout_dims
@@ -420,8 +420,8 @@ def main(args):
                                   readout=args.readout,                    # readout
                                   final_readout=args.final_readout,        # final readout
                                   apply_dropout_before=args.drop_position, # where to apply dropout
-                                  use_coboundaries=use_coboundaries,       # whether to use coboundaries
-                                  use_boundaries=use_boundaries,           # whether to use boundaries
+                                  use_up_attr=use_up_attr,       # whether to use coboundaries
+                                  use_down_attr=use_down_attr,           # whether to use boundaries
                                   embed_edge=args.use_edge_features,       # whether to use edge feats
                                   graph_norm=args.graph_norm,              # normalization layer
                                   readout_dims=readout_dims,               # readout_dims
@@ -441,8 +441,8 @@ def main(args):
                                   readout=args.readout,                    # readout
                                   final_readout=args.final_readout,        # final readout
                                   apply_dropout_before=args.drop_position, # where to apply dropout
-                                  use_coboundaries=use_coboundaries,       # whether to use coboundaries
-                                  use_boundaries=use_boundaries,           # whether to use boundaries
+                                  use_up_attr=use_up_attr,       # whether to use coboundaries
+                                  use_down_attr=use_down_attr,           # whether to use boundaries
                                   embed_edge=args.use_edge_features,       # whether to use edge feats
                                   graph_norm=args.graph_norm,              # normalization layer
                                   readout_dims=readout_dims,               # readout_dims
@@ -462,8 +462,8 @@ def main(args):
                                   readout=args.readout,                    # readout
                                   final_readout=args.final_readout,        # final readout
                                   apply_dropout_before=args.drop_position, # where to apply dropout
-                                  use_coboundaries=use_coboundaries,       # whether to use coboundaries
-                                  use_boundaries=use_boundaries,           # whether to use boundaries
+                                  use_up_attr=use_up_attr,       # whether to use coboundaries
+                                  use_down_attr=use_down_attr,           # whether to use boundaries
                                   embed_edge=args.use_edge_features,       # whether to use edge feats
                                   graph_norm=args.graph_norm,              # normalization layer
                                   readout_dims=readout_dims,               # readout_dims
@@ -484,8 +484,8 @@ def main(args):
                                   readout=args.readout,                    # readout
                                   final_readout=args.final_readout,        # final readout
                                   apply_dropout_before=args.drop_position, # where to apply dropout
-                                  use_coboundaries=use_coboundaries,       # whether to use coboundaries
-                                  use_boundaries=use_boundaries,           # whether to use boundaries
+                                  use_up_attr=use_up_attr,       # whether to use coboundaries
+                                  use_down_attr=use_down_attr,           # whether to use boundaries
                                   embed_edge=args.use_edge_features,       # whether to use edge feats
                                   graph_norm=args.graph_norm,              # normalization layer
                                   readout_dims=readout_dims,               # readout_dims

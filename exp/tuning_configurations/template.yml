@@ -45,7 +45,7 @@ max_ring_size:
     - 6
 model:
     - sparse_cin
-use_coboundaries:
+use_up_attr:
     - True
     - False
 nonlinearity:

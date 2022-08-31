@@ -7,8 +7,8 @@ python -m exp.run_mol_exp \
   --exp_name cwn-molhiv-deeper-less-sparse \
   --dataset MOLHIV \
   --model ogb_embed_less_sparse_deeper \
-  --use_coboundaries True \
-  --use_boundaries True \
+  --use_up_attr True \
+  --use_down_attr True \
   --indrop_rate 0.0 \
   --drop_rate 0.2 \
   --res_drop_rate 0.2 \

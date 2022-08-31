@@ -16,7 +16,7 @@ class RingSparseCIN(torch.nn.Module):
     """
 
     def __init__(self, num_input_features, num_classes, num_layers, hidden,
-                 max_dim: int = 2, nonlinearity='relu', train_eps=False, use_coboundaries=False,
+                 max_dim: int = 2, nonlinearity='relu', train_eps=False, use_up_attr=False,
                  graph_norm='id'):
         super(RingSparseCIN, self).__init__()
 
@@ -35,7 +35,7 @@ class RingSparseCIN(torch.nn.Module):
                     passed_update_up_nn=None, passed_update_boundaries_nn=None,
                     train_eps=train_eps, max_dim=self.max_dim,
                     hidden=hidden, act_module=act_module, layer_dim=layer_dim,
-                    graph_norm=self.graph_norm, use_coboundaries=use_coboundaries, variant='sparse'))
+                    graph_norm=self.graph_norm, use_up_attr=use_up_attr, variant='sparse'))
         self.lin1 = Linear(hidden, num_classes)
 
     def reset_parameters(self):

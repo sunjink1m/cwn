@@ -26,8 +26,8 @@ python -m cProfile -o time/dense_zinc_128.txt -m exp.run_mol_exp \
   --eval_metric mae \
   --minimize \
   --lr_scheduler None \
-  --use_coboundaries True \
-  --use_boundaries True \
+  --use_up_attr True \
+  --use_down_attr True \
   --use_edge_features \
   --include_coboundary_links \
   --include_down_adj \

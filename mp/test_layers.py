@@ -226,8 +226,8 @@ def test_dense_cin_conv_training():
                         act_module=get_nonlinearity('id', return_module=True), 
                         layer_dim=1,
                         graph_norm=get_graph_norm('id'), 
-                        use_coboundaries=True,
-                        use_boundaries=True)
+                        use_up_attr=True,
+                        use_down_attr=True)
 
 
     # these linear layers should be used during forward calculation
@@ -383,8 +383,8 @@ def test_dense_basic_conv_training():
                         act_module=get_nonlinearity('id', return_module=True), 
                         layer_dim=1,
                         graph_norm=get_graph_norm('id'), 
-                        use_coboundaries=True,
-                        use_boundaries=True)
+                        use_up_attr=True,
+                        use_down_attr=True)
 
 
     # these linear layers should be used during forward calculation

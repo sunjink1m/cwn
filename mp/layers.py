@@ -480,8 +480,8 @@ class DenseCINConv(torch.nn.Module):
                  passed_update_boundaries_nn: Optional[Callable] = None,
                  passed_update_coboundaries_nn: Optional[Callable] = None,
                  eps: float = 0., train_eps: bool = False, max_dim: int = 2,
-                 graph_norm=BN, use_coboundaries=False,
-                 use_boundaries=False, 
+                 graph_norm=BN, use_up_attr=False,
+                 use_down_attr=False, 
                  omit_2cell_down=False,
                  variant='dense',
                  **kwargs):
@@ -538,7 +538,7 @@ class DenseCINConv(torch.nn.Module):
             
             msg_up_nn = passed_msg_up_nn
             if msg_up_nn is None:
-                if use_coboundaries:
+                if use_up_attr:
                     msg_up_nn = Sequential(
                             Catter(),
                             Linear(kwargs['layer_dim'] * 2, kwargs['layer_dim']),
@@ -548,7 +548,7 @@ class DenseCINConv(torch.nn.Module):
 
             msg_down_nn = passed_msg_down_nn
             if msg_down_nn is None:
-                if use_boundaries:
+                if use_down_attr:
                     msg_down_nn = Sequential(
                             Catter(),
                             Linear(kwargs['layer_dim'] * 2, kwargs['layer_dim']),
@@ -792,8 +792,8 @@ class DenseBasicConv(torch.nn.Module):
                  passed_update_boundaries_nn: Optional[Callable] = None,
                  passed_update_coboundaries_nn: Optional[Callable] = None,
                  eps: float = 0., train_eps: bool = False, max_dim: int = 2,
-                 graph_norm=BN, use_coboundaries=False,
-                 use_boundaries=False, 
+                 graph_norm=BN, use_up_attr=False,
+                 use_down_attr=False, 
                  omit_2cell_down=False,
                  variant='dense',
                  **kwargs):
@@ -850,7 +850,7 @@ class DenseBasicConv(torch.nn.Module):
             
             msg_up_nn = passed_msg_up_nn
             if msg_up_nn is None:
-                if use_coboundaries:
+                if use_up_attr:
                     msg_up_nn = Sequential(
                             Catter(),
                             Linear(kwargs['layer_dim'] * 2, kwargs['layer_dim']),
@@ -860,7 +860,7 @@ class DenseBasicConv(torch.nn.Module):
 
             msg_down_nn = passed_msg_down_nn
             if msg_down_nn is None:
-                if use_boundaries:
+                if use_down_attr:
                     msg_down_nn = Sequential(
                             Catter(),
                             Linear(kwargs['layer_dim'] * 2, kwargs['layer_dim']),
@@ -1141,8 +1141,8 @@ class DeeperCINConv(torch.nn.Module):
                  passed_update_boundaries_nn: Optional[Callable] = None,
                  passed_update_coboundaries_nn: Optional[Callable] = None,
                  eps: float = 0., train_eps: bool = False, max_dim: int = 2,
-                 graph_norm=BN, use_coboundaries=False,
-                 use_boundaries=False, 
+                 graph_norm=BN, use_up_attr=False,
+                 use_down_attr=False, 
                  omit_2cell_down=False,
                  variant='dense',
                  **kwargs):
@@ -1203,7 +1203,7 @@ class DeeperCINConv(torch.nn.Module):
             
             msg_up_nn = passed_msg_up_nn
             if msg_up_nn is None:
-                if use_coboundaries:
+                if use_up_attr:
                     msg_up_nn = Sequential(
                             Catter(),
                             Linear(kwargs['layer_dim'] * 2, kwargs['layer_dim']),
@@ -1213,7 +1213,7 @@ class DeeperCINConv(torch.nn.Module):
 
             msg_down_nn = passed_msg_down_nn
             if msg_down_nn is None:
-                if use_boundaries:
+                if use_down_attr:
                     msg_down_nn = Sequential(
                             Catter(),
                             Linear(kwargs['layer_dim'] * 2, kwargs['layer_dim']),

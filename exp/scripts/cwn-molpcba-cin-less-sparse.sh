@@ -9,8 +9,8 @@ python -m cProfile -o cin_profile.txt -m -m exp.run_mol_exp \
   --exp_name cwn-molpcba-cin-less-sparse \
   --dataset MOLPCBA \
   --model ogb_embed_less_sparse_cin \
-  --use_coboundaries True \
-  --use_boundaries True \
+  --use_up_attr True \
+  --use_down_attr True \
   --indrop_rate 0.0 \
   --drop_rate 0.5 \
   --res_drop_rate 0.5 \
