@@ -18,6 +18,7 @@ if __name__ == "__main__":
     parser.add_argument('--conf', type=str, help='path to yaml configuration')
     parser.add_argument('--code', type=str, help='tuning name')
     parser.add_argument('--idx', type=int, help='selection index')
+    parser.add_argument('--max_idx', type=int, default=__max_devices__, help='maximum selection index')
     t_args = parser.parse_args()
     
     # parse grid from yaml
@@ -48,7 +49,7 @@ if __name__ == "__main__":
     grid = itertools.product(*hyper_values)
     exp_queue = list()
     for h, hypers in enumerate(grid):
-        if h % __max_devices__ == (t_args.idx % __max_devices__):
+        if h % t_args.max_idx == (t_args.idx % t_args.max_idx):
             exp_queue.append((h, hypers))
     print(f"{len(exp_queue)} of them will be run in this idx.")
 
