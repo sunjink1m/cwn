@@ -136,8 +136,6 @@ dmypy.json
 
 
 *.gz
-# exp/results/
-exp/results/**/*.pkl
-exp/results/*toy
+exp/results/
 *.pt
 
