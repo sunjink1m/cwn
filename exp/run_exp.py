@@ -14,7 +14,7 @@ from mp.graph_models import GIN0, GINWithJK
 from mp.models import CIN0, Dummy, SparseCIN, EdgeOrient, EdgeMPNN, MessagePassingAgnostic
 from mp.molec_models import (OGBEmbedCWN, EmbedSparseCINNoRings,
                          EmbedGIN, EmbedDenseCIN)
-from mp.layers import (DenseBasicConv, DeeperCINConv)
+from mp.layers import (DenseBasicConv)
 from mp.ring_exp_models import RingSparseCIN, RingGIN
 
 
@@ -428,71 +428,6 @@ def main(args):
                                   omit_2cell_down=omit_2cell_down,
                                   variant='dense',
                                   conv_type=DenseBasicConv
-                                 ).to(device)
-    elif args.model == 'ogb_embed_sparse_deeper':
-        model = OGBEmbedCWN(dataset.num_tasks,                       # out_size
-                                  args.num_layers,                         # num_layers
-                                  args.emb_dim,                            # hidden
-                                  dropout_rate=args.drop_rate,             # dropout_rate
-                                  indropout_rate=args.indrop_rate,         # in-dropout_rate
-                                  max_dim=dataset.max_dim,                 # max_dim
-                                  jump_mode=args.jump_mode,                # jump_mode
-                                  nonlinearity=args.nonlinearity,          # nonlinearity
-                                  readout=args.readout,                    # readout
-                                  final_readout=args.final_readout,        # final readout
-                                  apply_dropout_before=args.drop_position, # where to apply dropout
-                                  use_up_attr=use_up_attr,       # whether to use coboundaries
-                                  use_down_attr=use_down_attr,           # whether to use boundaries
-                                  embed_edge=args.use_edge_features,       # whether to use edge feats
-                                  graph_norm=args.graph_norm,              # normalization layer
-                                  readout_dims=readout_dims,               # readout_dims
-                                  variant='sparse',
-                                  conv_type=DeeperCINConv,
-                                  res_drop_rate=args.res_drop_rate
-                                 ).to(device)
-    elif args.model == 'ogb_embed_less_sparse_deeper':
-        model = OGBEmbedCWN(dataset.num_tasks,                       # out_size
-                                  args.num_layers,                         # num_layers
-                                  args.emb_dim,                            # hidden
-                                  dropout_rate=args.drop_rate,             # dropout_rate
-                                  indropout_rate=args.indrop_rate,         # in-dropout_rate
-                                  max_dim=dataset.max_dim,                 # max_dim
-                                  jump_mode=args.jump_mode,                # jump_mode
-                                  nonlinearity=args.nonlinearity,          # nonlinearity
-                                  readout=args.readout,                    # readout
-                                  final_readout=args.final_readout,        # final readout
-                                  apply_dropout_before=args.drop_position, # where to apply dropout
-                                  use_up_attr=use_up_attr,       # whether to use coboundaries
-                                  use_down_attr=use_down_attr,           # whether to use boundaries
-                                  embed_edge=args.use_edge_features,       # whether to use edge feats
-                                  graph_norm=args.graph_norm,              # normalization layer
-                                  readout_dims=readout_dims,               # readout_dims
-                                  omit_2cell_down=omit_2cell_down,
-                                  variant='less-sparse',
-                                  conv_type=DeeperCINConv,
-                                  res_drop_rate=args.res_drop_rate
-                                 ).to(device)
-    elif args.model == 'ogb_embed_dense_deeper':
-        model = OGBEmbedCWN(dataset.num_tasks,                       # out_size
-                                  args.num_layers,                         # num_layers
-                                  args.emb_dim,                            # hidden
-                                  dropout_rate=args.drop_rate,             # dropout_rate
-                                  indropout_rate=args.indrop_rate,         # in-dropout_rate
-                                  max_dim=dataset.max_dim,                 # max_dim
-                                  jump_mode=args.jump_mode,                # jump_mode
-                                  nonlinearity=args.nonlinearity,          # nonlinearity
-                                  readout=args.readout,                    # readout
-                                  final_readout=args.final_readout,        # final readout
-                                  apply_dropout_before=args.drop_position, # where to apply dropout
-                                  use_up_attr=use_up_attr,       # whether to use coboundaries
-                                  use_down_attr=use_down_attr,           # whether to use boundaries
-                                  embed_edge=args.use_edge_features,       # whether to use edge feats
-                                  graph_norm=args.graph_norm,              # normalization layer
-                                  readout_dims=readout_dims,               # readout_dims
-                                  omit_2cell_down=omit_2cell_down,
-                                  variant='dense',
-                                  conv_type=DeeperCINConv,
-                                  res_drop_rate=args.res_drop_rate
                                  ).to(device)
     else:
         raise ValueError('Invalid model type {}.'.format(args.model))
