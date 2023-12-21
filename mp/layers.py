@@ -1,6 +1,6 @@
 import torch
 
-from typing import Callable, Optional, List
+from typing import Callable, Optional
 from torch import Tensor
 from mp.cell_mp import CochainMessagePassing, CochainMessagePassingParams
 from torch_geometric.nn.inits import reset
@@ -9,7 +9,7 @@ from data.complex import Cochain
 from torch_scatter import scatter
 from ogb.graphproppred.mol_encoder import AtomEncoder, BondEncoder
 from abc import ABC, abstractmethod
-import torch.nn.functional as F
+
 
 class DummyCochainMessagePassing(CochainMessagePassing):
     """This is a dummy parameter-free message passing model used for testing."""
