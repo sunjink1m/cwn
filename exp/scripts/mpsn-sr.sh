@@ -6,7 +6,7 @@ python -m exp.run_sr_exp \
   --device 0 \
   --exp_name mpsn-sr \
   --model sparse_cin \
-  --use_coboundaries True \
+  --use_up_attr True \
   --drop_rate 0.0 \
   --graph_norm id \
   --nonlinearity elu \

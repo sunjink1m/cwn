@@ -17,7 +17,7 @@ def get_parser():
                         help='which gpu to use if any (default: 0)')
     parser.add_argument('--model', type=str, default='sparse_cin',
                         help='model, possible choices: cin, dummy, ... (default: cin)')
-    parser.add_argument('--use_coboundaries', type=str, default='False',
+    parser.add_argument('--use_up_attr', type=str, default='False',
                         help='whether to use coboundary features for up-messages in sparse_cin (default: False)')
     # ^^^ here we explicitly pass it as string as easier to handle in tuning
     parser.add_argument('--indrop_rate', type=float, default=0.0,

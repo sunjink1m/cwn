@@ -26,6 +26,6 @@ python -m exp.run_tu_exp \
   --lr_scheduler 'StepLR' \
   --lr_scheduler_decay_rate 0.5 \
   --lr_scheduler_decay_steps 20 \
-  --use_coboundaries True \
+  --use_up_attr True \
   --dump_curves \
   --preproc_jobs 4

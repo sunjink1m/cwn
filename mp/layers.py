@@ -233,14 +233,14 @@ class SparseCINConv(torch.nn.Module):
                  passed_update_up_nn: Optional[Callable],
                  passed_update_boundaries_nn: Optional[Callable],
                  eps: float = 0., train_eps: bool = False, max_dim: int = 2,
-                 graph_norm=BN, use_coboundaries=False, **kwargs):
+                 graph_norm=BN, use_up_attr=False, **kwargs):
         super(SparseCINConv, self).__init__()
         self.max_dim = max_dim
         self.mp_levels = torch.nn.ModuleList()
         for dim in range(max_dim+1):
             msg_up_nn = passed_msg_up_nn
             if msg_up_nn is None:
-                if use_coboundaries:
+                if use_up_attr:
                     msg_up_nn = Sequential(
                             Catter(),
                             Linear(kwargs['layer_dim'] * 2, kwargs['layer_dim']),

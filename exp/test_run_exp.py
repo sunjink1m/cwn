@@ -3,7 +3,7 @@ from exp.run_exp import main
 
 def get_args_for_dummym():
     args = list()
-    args += ['--use_coboundaries', 'True']
+    args += ['--use_up_attr', 'True']
     args += ['--graph_norm', 'id']
     args += ['--lr_scheduler', 'None']
     args += ['--num_layers', '3']

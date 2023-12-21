@@ -21,7 +21,7 @@ def _get_cwn_sr_embeddings(family, seed, baseline=False):
     hidden = 16
     num_layers = 3
     max_ring_size = 6
-    use_coboundaries = True
+    use_up_attr = True
     nonlinearity = 'elu'
     graph_norm = 'id'
     readout = 'sum'
@@ -42,7 +42,7 @@ def _get_cwn_sr_embeddings(family, seed, baseline=False):
     # Instantiate model
     if not baseline:
         model = SparseCIN(num_input_features=1, num_classes=complexes.num_classes, num_layers=num_layers, hidden=hidden, 
-                            use_coboundaries=use_coboundaries, nonlinearity=nonlinearity, graph_norm=graph_norm, 
+                            use_up_attr=use_up_attr, nonlinearity=nonlinearity, graph_norm=graph_norm, 
                             readout=readout, final_readout=final_readout, readout_dims=readout_dims)
     else:
         hidden = 256
